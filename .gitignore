@@ -1,0 +1,14 @@
+target/
+*.classes
+*.generated-sourcecs
+
+.idea/
+*.iml
+*.iws
+
+.vscode/
+
+.env
+*.log
+
+HELP.md

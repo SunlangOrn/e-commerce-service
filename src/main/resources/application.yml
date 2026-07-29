@@ -1,0 +1,26 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: ecommerce-service
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3310/ecommerce_db}
+    username: ${SPRING_DATASOURCE_USERNAME:root}
+    password: ${SPRING_DATASOURCE_PASSWORD:root}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+    repair-on-migrate: true
+
+security:
+  jwt:
+    secret: ${SECURITY_JWT_SECRET:change-this-secret-to-a-long-random-production-value-32-bytes}
+    access-token-minutes: ${SECURITY_JWT_ACCESS_TOKEN_MINUTES:15}
+    refresh-token-days: ${SECURITY_JWT_REFRESH_TOKEN_DAYS:7}
+
