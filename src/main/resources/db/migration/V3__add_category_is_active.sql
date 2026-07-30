@@ -1,2 +1,0 @@
-
-ALTER TABLE categories ADD COLUMN is_active BOOLEAN DEFAULT TRUE;
