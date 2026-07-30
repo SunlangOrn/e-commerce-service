@@ -6,6 +6,7 @@ import jakarta.persistence.*;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.Date;
 import java.util.List;
 
 import lombok.Getter;
@@ -34,9 +35,6 @@ public class Product {
     private BigDecimal price;
 
     private Integer stockQuantity = 0;
-
-    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL)
-    private List<ProductImage> images;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

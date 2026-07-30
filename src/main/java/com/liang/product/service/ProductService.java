@@ -1,10 +1,10 @@
 package com.liang.product.service;
 
-import com.liang.product.dto.ProductImageRequest;
-import com.liang.product.dto.ProductImageResponse;
 import com.liang.product.dto.ProductRequest;
 import com.liang.product.dto.ProductResponse;
 import java.util.List;
+
+import com.liang.product.dto.ProductResponseDetail;
 import org.springframework.data.domain.Page;
 
 public interface ProductService {
@@ -13,8 +13,7 @@ public interface ProductService {
 
     ProductResponse view(Long id);
 
-    // Admin management - includes inactive products.
-    Page<ProductResponse> listAll(Integer page, Integer size);
+    Page<ProductResponseDetail> listAll(Integer page, Integer size);
 
     ProductResponse create(ProductRequest request);
 
@@ -22,9 +21,4 @@ public interface ProductService {
 
     void delete(Long id);
 
-    List<ProductImageResponse> listImages(Long productId);
-
-    ProductImageResponse addImage(Long productId, ProductImageRequest request);
-
-    void deleteImage(Long productId, Long imageId);
 }

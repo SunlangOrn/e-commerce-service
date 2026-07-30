@@ -1,43 +1,53 @@
 package com.liang.product.mapper;
 
-import com.liang.product.dto.ProductImageResponse;
+import com.liang.category.entity.Status;
 import com.liang.product.dto.ProductRequest;
 import com.liang.product.dto.ProductResponse;
+import com.liang.product.dto.ProductResponseDetail;
 import com.liang.product.entity.Product;
-import com.liang.product.entity.ProductImage;
-import com.liang.category.entity.Status;
-import org.mapstruct.BeanMapping;
-import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
-import org.mapstruct.MappingTarget;
-import org.mapstruct.NullValuePropertyMappingStrategy;
+import org.mapstruct.*;
 
-@Mapper(componentModel = "spring")
+@Mapper(
+        componentModel = "spring",
+        nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE,
+        unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface ProductMapper {
-    @Mapping(target = "status", source = "isActive")
+
+    // User Response Mapping
+    @Mapping(target = "categoryId", source = "category.id")
     ProductResponse toResponse(Product product);
 
-    ProductImageResponse toResponse(ProductImage image);
+    // Admin Response Detail Mapping
+    @Mapping(target = "categoryId", source = "category.id")
+    ProductResponseDetail toDetailResponse(Product product);
 
+    // Entity Creation Mapping
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "deletedAt", ignore = true)
-    @Mapping(target = "isActive", source = "status")
+    @Mapping(target = "category", ignore = true)
     Product from(ProductRequest request);
 
-    @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    // Entity Update Mapping
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "deletedAt", ignore = true)
-    @Mapping(target = "isActive", source = "status")
+    @Mapping(target = "category", ignore = true)
     void updateFrom(ProductRequest request, @MappingTarget Product product);
 
-    // Entity/DB stay a plain boolean column; only the API layer speaks in Status.
-    default Boolean map(Status status) {
-        return status == null ? null : status == Status.ACTIVE;
+    // Automatic Enum / String Mapping
+    default Status mapStringToStatus(String statusStr) {
+        if (statusStr == null || statusStr.isBlank()) {
+            return Status.ACTIVE;
+        }
+        try {
+            return Status.valueOf(statusStr.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Invalid status value: " + statusStr);
+        }
     }
 
-    default Status map(Boolean isActive) {
-        return isActive == null ? null : (isActive ? Status.ACTIVE : Status.INACTIVE);
+    default String mapStatusToString(Status status) {
+        return status != null ? status.name() : null;
     }
 }

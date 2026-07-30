@@ -5,10 +5,9 @@ import static com.liang.shared.api.ControllerHandler.responseDeleted;
 import static com.liang.shared.api.ControllerHandler.responsePaging;
 import static com.liang.shared.api.ControllerHandler.responseSucceed;
 
-import com.liang.product.dto.ProductImageRequest;
-import com.liang.product.dto.ProductImageResponse;
 import com.liang.product.dto.ProductRequest;
 import com.liang.product.dto.ProductResponse;
+import com.liang.product.dto.ProductResponseDetail;
 import com.liang.product.service.ProductService;
 import com.liang.shared.entity.HttpBodyPagingResponse;
 import com.liang.shared.entity.HttpBodyResponse;
@@ -35,9 +34,12 @@ public class ProductController {
     private final ProductService productService;
 
     @GetMapping
-    public ResponseEntity<HttpBodyResponse<List<ProductResponse>>> listAll(
-            @RequestParam(required = false) Integer page, @RequestParam(required = false) Integer size) {
-        Page<ProductResponse> products = productService.listAll(page, size);
+    public ResponseEntity<HttpBodyResponse<List<ProductResponseDetail>>> listAll(
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size) {
+
+        Page<ProductResponseDetail> products = productService.listAll(page, size);
+
         return responsePaging(
                 products.getContent(),
                 HttpBodyPagingResponse.of(
@@ -67,23 +69,6 @@ public class ProductController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         productService.delete(id);
-        return responseDeleted();
-    }
-
-    @GetMapping("/{id}/images")
-    public ResponseEntity<HttpBodyResponse<List<ProductImageResponse>>> listImages(@PathVariable Long id) {
-        return responseSucceed(productService.listImages(id));
-    }
-
-    @PostMapping("/{id}/images")
-    public ResponseEntity<HttpBodyResponse<ProductImageResponse>> addImage(
-            @PathVariable Long id, @Valid @RequestBody ProductImageRequest request) {
-        return responseCreated(productService.addImage(id, request));
-    }
-
-    @DeleteMapping("/{id}/images/{imageId}")
-    public ResponseEntity<Void> deleteImage(@PathVariable Long id, @PathVariable Long imageId) {
-        productService.deleteImage(id, imageId);
         return responseDeleted();
     }
 }

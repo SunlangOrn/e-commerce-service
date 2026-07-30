@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class ProductResponse {
+public class ProductResponseDetail {
 
     private Long id;
     private Long categoryId;
@@ -18,4 +18,6 @@ public class ProductResponse {
     private BigDecimal price;
     private Integer stockQuantity;
     private String imageUrl;
+    private String status;
+    private Instant createdAt;
 }

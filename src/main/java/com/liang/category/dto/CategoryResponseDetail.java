@@ -12,5 +12,5 @@ public class CategoryResponseDetail {
   private Long id;
   private String name;
   private Long parentId;
-  private Status status;
+  private String status;
 }

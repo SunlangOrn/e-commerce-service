@@ -1,41 +1,50 @@
 package com.liang.product.service;
 
-import com.liang.shared.api.NotFoundException;
-import com.liang.product.dto.ProductImageRequest;
-import com.liang.product.dto.ProductImageResponse;
+import com.liang.category.entity.Category;
+import com.liang.category.entity.Status;
+import com.liang.category.repository.CategoryRepository;
 import com.liang.product.dto.ProductRequest;
 import com.liang.product.dto.ProductResponse;
+import com.liang.product.dto.ProductResponseDetail;
 import com.liang.product.entity.Product;
-import com.liang.product.entity.ProductImage;
 import com.liang.product.mapper.ProductMapper;
-import com.liang.product.repository.ProductImageRepository;
 import com.liang.product.repository.ProductRepository;
-import java.util.List;
+import com.liang.shared.api.NotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class ProductServiceImpl implements ProductService {
+
     private final ProductRepository productRepository;
-    private final ProductImageRepository productImageRepository;
+    private final CategoryRepository categoryRepository;
     private final ProductMapper productMapper;
 
     @Override
     public Page<ProductResponse> browse(Integer page, Integer size, Long categoryId, String keyword) {
-        Pageable pageable = PageRequest.of(page == null ? 0 : page, size == null ? 20 : size);
-        Page<Product> products;
-        if (keyword != null && !keyword.isBlank()) {
-            products = productRepository.findByIsActiveTrueAndNameContainingIgnoreCase(keyword, pageable);
-        } else if (categoryId != null) {
-            products = productRepository.findByIsActiveTrueAndCategoryId(categoryId, pageable);
-        } else {
-            products = productRepository.findByIsActiveTrue(pageable);
-        }
+        int pageNumber = (page == null || page < 0) ? 0 : page;
+        int pageSize = (size == null || size <= 0) ? 20 : size;
+        Pageable pageable = PageRequest.of(
+                pageNumber,
+                pageSize,
+                Sort.by(Sort.Direction.DESC, "createdAt"));
+
+        String cleanKeyword = (keyword != null && !keyword.isBlank()) ? keyword.trim() : null;
+
+        Page<Product> products = productRepository.searchProducts(
+                Status.ACTIVE,
+                categoryId,
+                cleanKeyword,
+                pageable
+        );
+
         return products.map(productMapper::toResponse);
     }
 
@@ -45,21 +54,34 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
-    public Page<ProductResponse> listAll(Integer page, Integer size) {
-        Pageable pageable = PageRequest.of(page == null ? 0 : page, size == null ? 20 : size);
-        return productRepository.findAllBy(pageable).map(productMapper::toResponse);
+    public Page<ProductResponseDetail> listAll(Integer page, Integer size) {
+        int pageNumber = (page == null || page < 0) ? 0 : page;
+        int pageSize = (size == null || size <= 0) ? 20 : size;
+        Pageable pageable = PageRequest.of(
+                pageNumber,
+                pageSize,
+                Sort.by(Sort.Direction.DESC, "id"));
+        return productRepository.findAll(pageable).map(productMapper::toDetailResponse);
     }
 
     @Override
     @Transactional
     public ProductResponse create(ProductRequest request) {
         Product product = productMapper.from(request);
+
+        if (request.getCategoryId() != null) {
+            Category category = categoryRepository.findById(request.getCategoryId())
+                    .orElseThrow(() -> new NotFoundException("Category not found with id: " + request.getCategoryId()));
+            product.setCategory(category);
+        }
+
         if (product.getStockQuantity() == null) {
             product.setStockQuantity(0);
         }
-        if (product.getIsActive() == null) {
-            product.setIsActive(true);
+        if (product.getStatus() == null) {
+            product.setStatus(Status.ACTIVE);
         }
+
         return productMapper.toResponse(productRepository.save(product));
     }
 
@@ -67,6 +89,13 @@ public class ProductServiceImpl implements ProductService {
     @Transactional
     public ProductResponse update(Long id, ProductRequest request) {
         Product product = findOrThrow(id);
+
+        if (request.getCategoryId() != null) {
+            Category category = categoryRepository.findById(request.getCategoryId())
+                    .orElseThrow(() -> new NotFoundException("Category not found with id: " + request.getCategoryId()));
+            product.setCategory(category);
+        }
+
         productMapper.updateFrom(request, product);
         return productMapper.toResponse(productRepository.save(product));
     }
@@ -74,44 +103,17 @@ public class ProductServiceImpl implements ProductService {
     @Override
     @Transactional
     public void delete(Long id) {
-        productRepository.delete(findOrThrow(id));
-    }
-
-    @Override
-    public List<ProductImageResponse> listImages(Long productId) {
-        findVisibleOrThrow(productId);
-        return productImageRepository.findByProductId(productId).stream()
-                .map(productMapper::toResponse)
-                .toList();
-    }
-
-    @Override
-    @Transactional
-    public ProductImageResponse addImage(Long productId, ProductImageRequest request) {
-        findOrThrow(productId);
-        ProductImage image = new ProductImage();
-        image.setProductId(productId);
-        image.setImageUrl(request.getImageUrl());
-        return productMapper.toResponse(productImageRepository.save(image));
-    }
-
-    @Override
-    @Transactional
-    public void deleteImage(Long productId, Long imageId) {
-        ProductImage image = productImageRepository.findById(imageId)
-                .orElseThrow(() -> new NotFoundException("Image not found"));
-        if (!image.getProductId().equals(productId)) {
-            throw new IllegalArgumentException("Image does not belong to this product");
-        }
-        productImageRepository.delete(image);
+        Product product = findOrThrow(id);
+        productRepository.delete(product);
     }
 
     private Product findOrThrow(Long id) {
         return productRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Product not found"));
+                .orElseThrow(() -> new NotFoundException("Product not found with id: " + id));
     }
+
     private Product findVisibleOrThrow(Long id) {
-        return productRepository.findByIdAndIsActiveTrue(id)
-                .orElseThrow(() -> new NotFoundException("Product not found"));
+        return productRepository.findByIdAndStatus(id, Status.ACTIVE)
+                .orElseThrow(() -> new NotFoundException("Product not found or inactive with id: " + id));
     }
 }

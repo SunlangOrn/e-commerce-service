@@ -14,6 +14,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ProductRequest {
+
     private Long categoryId;
 
     @NotBlank
@@ -30,5 +31,5 @@ public class ProductRequest {
 
     private String imageUrl;
 
-    private Status status;
+    private String status;
 }

@@ -4,6 +4,7 @@ import com.liang.product.entity.Product;
 import jakarta.persistence.*;
 
 import java.time.Instant;
+import java.util.Date;
 import java.util.List;
 
 import lombok.Getter;
@@ -39,5 +40,5 @@ public class Category {
   @Column(nullable = false)
   private Status status = Status.ACTIVE;
 
-  private Instant deletedAt;
+  private Date deletedAt;
 }

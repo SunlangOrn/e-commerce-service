@@ -9,31 +9,45 @@ import org.mapstruct.*;
 
 @Mapper(
         componentModel = "spring",
-        nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.SET_TO_NULL,
-        unmappedTargetPolicy = ReportingPolicy.IGNORE,
-        nullValueCheckStrategy = NullValueCheckStrategy.ALWAYS)
+        nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE,
+        unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface CategoryMapper {
 
-  @Mapping(target = "status", source = "isActive")
-  CategoryResponseDetail toResponseDetail(Category category);
+    @Mapping(target = "parentId", source = "parent.id")
+    CategoryResponseDetail toResponseDetail(Category category);
 
-  CategoryResponse toResponse(Category category);
+    @Mapping(target = "parentId", source = "parent.id")
+    CategoryResponse toResponse(Category category);
 
-  @Mapping(target = "id", ignore = true)
-  @Mapping(target = "deletedAt", ignore = true)
-  @Mapping(target = "isActive", source = "status")
-  Category from(CategoryRequest request);
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "deletedAt", ignore = true)
+    @Mapping(target = "parent", ignore = true)
+    @Mapping(target = "subcategories", ignore = true)
+    @Mapping(target = "products", ignore = true)
+    @Mapping(target = "status", source = "status")
+    Category from(CategoryRequest request);
 
-  @Mapping(target = "id", ignore = true)
-  @Mapping(target = "deletedAt", ignore = true)
-  @Mapping(target = "isActive", source = "status")
-  void updateFrom(CategoryRequest request, @MappingTarget Category category);
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "deletedAt", ignore = true)
+    @Mapping(target = "parent", ignore = true)
+    @Mapping(target = "subcategories", ignore = true)
+    @Mapping(target = "products", ignore = true)
+    @Mapping(target = "status", source = "status")
+    void updateFrom(CategoryRequest request, @MappingTarget Category category);
 
-  default Boolean map(Status status) {
-    return status == null ? null : status == Status.ACTIVE;
-  }
+    default Status mapStringToStatus(String statusStr) {
+        if (statusStr == null || statusStr.isBlank()) {
+            return Status.ACTIVE; // Default fallback value
+        }
+        try {
+            return Status.valueOf(statusStr.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Invalid status value: " + statusStr);
+        }
+    }
 
-  default Status map(Boolean isActive) {
-    return isActive == null ? null : (isActive ? Status.ACTIVE : Status.INACTIVE);
-  }
+    // Helper method to convert Status enum -> String
+    default String mapStatusToString(Status status) {
+        return status != null ? status.name() : null;
+    }
 }

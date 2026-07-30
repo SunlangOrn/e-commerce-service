@@ -17,5 +17,5 @@ public class CategoryRequest {
 
   private Long parentId;
 
-  private Status status;
+  private String status;
 }
