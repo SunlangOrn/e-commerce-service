@@ -13,6 +13,9 @@ ALTER TABLE products
 -- 2. ADDRESSES (User Profile Address Book)
 ALTER TABLE addresses
     ADD COLUMN is_default BOOLEAN DEFAULT FALSE AFTER postal_code,
+    ADD COLUMN latitude DECIMAL(10, 8) NULL AFTER city,
+    ADD COLUMN longitude DECIMAL(11, 8) NULL AFTER latitude,
+    ADD COLUMN google_place_id VARCHAR(255) NULL AFTER longitude;
 DROP COLUMN address_type,
     MODIFY full_name VARCHAR(100) NOT NULL,
     MODIFY phone VARCHAR(20) NOT NULL,

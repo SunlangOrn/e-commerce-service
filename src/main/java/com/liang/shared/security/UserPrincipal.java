@@ -6,7 +6,6 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
-/** Adapts our own User entity to Spring Security's UserDetails interface. */
 public class UserPrincipal implements UserDetails {
   private final User user;
 
