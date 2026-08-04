@@ -1,14 +1,7 @@
 package com.liang.shared.security;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
+
 import java.time.Instant;
 import lombok.Getter;
 import lombok.Setter;
@@ -23,30 +16,40 @@ import org.hibernate.annotations.SQLRestriction;
 @SQLDelete(sql = "UPDATE users SET deleted_at = NOW() WHERE id = ?")
 @SQLRestriction("deleted_at IS NULL")
 public class User {
-  @Id
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
-  private Long id;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-  @Column(nullable = false)
-  private String name;
+    @Column(nullable = false)
+    private String name;
 
-  @Column(unique = true, nullable = false)
-  private String email;
+    @Column(unique = true, nullable = false)
+    private String email;
 
-  @Column(nullable = false)
-  private String password;
+    @Column(nullable = false)
+    private String password;
 
-  private String phone;
+    private String phone;
 
-  @Enumerated(EnumType.STRING)
-  @Column(nullable = false)
-  private Role role = Role.CUSTOMER;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private Role role = Role.CUSTOMER;
 
-  private Instant createdAt;
-  private Instant deletedAt;
+    @Column(name = "created_at", updatable = false)
+    private Instant createdAt;
+    @Column(name = "updated_at")
+    private Instant updated_At;
+    @Column(name = "deleted_at")
+    private Instant deletedAt;
 
-  @PrePersist
-  void prePersist() {
-    createdAt = Instant.now();
-  }
+    @PrePersist
+    void prePersist() {
+        this.createdAt = Instant.now();
+        this.updated_At = Instant.now();
+    }
+
+    @PreUpdate
+    void preUpdate() {
+        this.updated_At = Instant.now();
+    }
 }
