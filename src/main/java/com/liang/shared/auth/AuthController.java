@@ -3,6 +3,7 @@ package com.liang.shared.auth;
 import com.liang.shared.api.ApiResponse;
 import com.liang.shared.metadata.Metadata;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -10,13 +11,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/auth")
+@RequestMapping("/api/v1/auth")
+@RequiredArgsConstructor
 public class AuthController {
   private final AuthService authService;
-
-  public AuthController(AuthService authService) {
-    this.authService = authService;
-  }
 
   @GetMapping("/me")
   ApiResponse<UserResponse> me() {

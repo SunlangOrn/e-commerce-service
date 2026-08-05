@@ -15,7 +15,7 @@ import static com.liang.shared.api.ControllerHandler.responseSucceed;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/v1/admin/addresses")
+@RequestMapping("/admin/api/v1/addresses")
 public class AdminAddressController {
 
     private final AddressService addressService;

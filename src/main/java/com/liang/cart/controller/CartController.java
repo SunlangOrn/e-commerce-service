@@ -18,7 +18,7 @@ import static com.liang.shared.api.ControllerHandler.responseSucceed;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/v1/admin/carts")
+@RequestMapping("/admin/api/v1/carts")
 public class CartController {
 
     private final CartService cartService;
