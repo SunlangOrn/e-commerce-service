@@ -2,6 +2,7 @@ package com.liang.order.entity;
 
 import com.liang.address.entity.Address;
 import com.liang.payment.entity.Payment;
+import com.liang.payment.entity.PaymentStatus;
 import com.liang.shared.security.User;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
@@ -50,11 +51,13 @@ public class Order {
     @Column(name = "total_amount", nullable = false, precision = 10, scale = 2)
     private BigDecimal totalAmount;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "order_status", nullable = false, length = 30)
-    private String orderStatus = "PENDING";
+    private OrderStatus orderStatus;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "payment_status", nullable = false, length = 30)
-    private String paymentStatus = "UNPAID";
+    private PaymentStatus paymentStatus;
 
     @Column(name = "created_at", updatable = false)
     private Instant createdAt;

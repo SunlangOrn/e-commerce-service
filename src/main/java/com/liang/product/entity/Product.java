@@ -3,12 +3,8 @@ package com.liang.product.entity;
 import com.liang.category.entity.Category;
 import com.liang.category.entity.Status;
 import jakarta.persistence.*;
-
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.util.Date;
-import java.util.List;
-
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.SQLDelete;
@@ -34,17 +30,27 @@ public class Product {
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal price;
 
+    @Column(name = "stock_quantity", nullable = false)
     private Integer stockQuantity = 0;
 
+    @Column(name = "image_url")
+    private String imageUrl;
+
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, length = 20)
     private Status status = Status.ACTIVE;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id")
     private Category category;
 
+    @Column(name = "created_at", updatable = false)
     private Instant createdAt;
+
+    @Column(name = "updated_at")
+    private Instant updatedAt;
+
+    @Column(name = "deleted_at")
     private Instant deletedAt;
 
     @Version
@@ -53,6 +59,12 @@ public class Product {
     @PrePersist
     void prePersist() {
         createdAt = Instant.now();
+        updatedAt = Instant.now();
+    }
+
+    @PreUpdate
+    void preUpdate() {
+        updatedAt = Instant.now();
     }
 
     public void decreaseStock(int quantity) {

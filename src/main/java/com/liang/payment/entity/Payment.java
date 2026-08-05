@@ -1,6 +1,7 @@
 package com.liang.payment.entity;
 
 import com.liang.order.entity.Order;
+import com.liang.order.entity.OrderStatus;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -25,8 +26,9 @@ public class Payment {
     @Column(name = "payment_method", nullable = false, length = 30)
     private String paymentMethod; // COD, KHQR, ABA_PAY
 
-    @Column(nullable = false, length = 30)
-    private String status = "PENDING"; // PENDING, SUCCESS, FAILED
+    @Enumerated(EnumType.STRING)
+    @Column(name = "payment_status", nullable = false, length = 30)
+    private PaymentStatus paymentStatus; // PENDING, SUCCESS, FAILED
 
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal amount;
@@ -43,12 +45,20 @@ public class Payment {
     }
 
     public void markAsPaid(String reference) {
-        this.status = "SUCCESS";
+        this.paymentStatus = PaymentStatus.SUCCESS;
         this.transactionReference = reference;
         this.paidAt = Instant.now();
+
         if (this.order != null) {
-            this.order.setPaymentStatus("PAID");
-            this.order.setOrderStatus("CONFIRMED");
+            this.order.setPaymentStatus(PaymentStatus.SUCCESS);
+            this.order.setOrderStatus(OrderStatus.PROCESSING);
+        }
+    }
+
+    public void markAsFailed() {
+        this.paymentStatus = PaymentStatus.FAILED;
+        if (this.order != null) {
+            this.order.setPaymentStatus(PaymentStatus.FAILED);
         }
     }
 }

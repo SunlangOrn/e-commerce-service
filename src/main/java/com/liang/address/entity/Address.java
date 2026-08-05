@@ -32,11 +32,17 @@ public class Address {
     @Column(nullable = false, length = 20)
     private String phone;
 
-    @Column(name = "address_line", nullable = false)
+    @Column(name = "address_line", nullable = false, length = 255)
     private String addressLine;
 
     @Column(nullable = false, length = 100)
     private String city = "Phnom Penh";
+
+    @Column(length = 100)
+    private String province;
+
+    @Column(name = "postal_code", length = 20)
+    private String postalCode;
 
     @Column(precision = 10, scale = 8)
     private BigDecimal latitude;
@@ -50,6 +56,6 @@ public class Address {
     @Column(name = "is_default")
     private Boolean isDefault = false;
 
+    @Column(name = "deleted_at")
     private Instant deletedAt;
-
 }
