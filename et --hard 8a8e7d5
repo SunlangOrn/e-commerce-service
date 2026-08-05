@@ -1,0 +1,10 @@
+[33m3b3bcfc[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmaster[m[33m, [m[1;31morigin/master[m[33m, [m[1;31morigin/HEAD[m[33m)[m HEAD@{0}: reset: moving to HEAD~1
+[33m8a8e7d5[m HEAD@{1}: reset: moving to 8a8e7d52382771cf50e7cadb480a3e63dc1cece4
+[33m265431d[m HEAD@{2}: reset: moving to HEAD~1
+[33m3b3bcfc[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmaster[m[33m, [m[1;31morigin/master[m[33m, [m[1;31morigin/HEAD[m[33m)[m HEAD@{3}: reset: moving to HEAD~1
+[33m8a8e7d5[m HEAD@{4}: commit: done user profile
+[33m3b3bcfc[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmaster[m[33m, [m[1;31morigin/master[m[33m, [m[1;31morigin/HEAD[m[33m)[m HEAD@{5}: commit: simplified_orders_and_payments
+[33m265431d[m HEAD@{6}: pull: Fast-forward
+[33m71057b7[m HEAD@{7}: commit: cart and cartItem
+[33me87b049[m HEAD@{8}: commit: change to use JPQL
+[33mceed075[m HEAD@{9}: commit (initial): first commit
