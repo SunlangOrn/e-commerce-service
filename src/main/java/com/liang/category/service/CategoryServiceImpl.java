@@ -8,7 +8,10 @@ import com.liang.category.entity.Category;
 import com.liang.category.entity.Status;
 import com.liang.category.mapper.CategoryMapper;
 import com.liang.category.repository.CategoryRepository;
+import com.liang.shared.api.NotFoundException;
 import jakarta.persistence.EntityNotFoundException;
+
+import java.time.Instant;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -32,7 +35,7 @@ public class CategoryServiceImpl implements CategoryService {
     @Override
     public CategoryResponse publicView(Long id) {
         Category category = categoryRepository.findByIdAndStatus(id, Status.ACTIVE)
-                .orElseThrow(() -> new EntityNotFoundException("Category not found with id: " + id));
+                .orElseThrow(() -> new NotFoundException("Category not found with id: " + id));
         return categoryMapper.toResponse(category);
     }
 
@@ -89,18 +92,22 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     @Override
+    @Transactional
     public void active(Long id) {
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Category not found with id: " + id));
         category.setStatus(Status.ACTIVE);
+        category.setUpdatedAt(Instant.now());
         categoryRepository.save(category);
     }
 
     @Override
+    @Transactional
     public void inactive(Long id) {
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Category not found with id: " + id));
         category.setStatus(Status.INACTIVE);
+        category.setUpdatedAt(Instant.now());
         categoryRepository.save(category);
     }
 }
