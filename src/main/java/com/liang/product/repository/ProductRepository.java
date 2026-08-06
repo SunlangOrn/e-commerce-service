@@ -2,6 +2,7 @@ package com.liang.product.repository;
 
 import com.liang.category.entity.Status;
 import com.liang.product.entity.Product;
+import com.liang.product.entity.ProductStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -21,12 +22,12 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
           AND (:keyword IS NULL OR LOWER(p.name) LIKE LOWER(CONCAT('%', :keyword, '%')))
     """)
     Page<Product> searchProducts(
-            @Param("status") Status status,
+            @Param("status") ProductStatus status,
             @Param("categoryId") Long categoryId,
             @Param("keyword") String keyword,
             Pageable pageable
     );
 
     @Query("SELECT p FROM Product p WHERE p.id = :id AND p.status = :status")
-    Optional<Product> findByIdAndStatus(@Param("id") Long id, @Param("status") Status status);
+    Optional<Product> findByIdAndStatus(@Param("id") Long id, @Param("status") ProductStatus status);
 }

@@ -1,10 +1,5 @@
 package com.liang.product.controller;
 
-import static com.liang.shared.api.ControllerHandler.responseCreated;
-import static com.liang.shared.api.ControllerHandler.responseDeleted;
-import static com.liang.shared.api.ControllerHandler.responsePaging;
-import static com.liang.shared.api.ControllerHandler.responseSucceed;
-
 import com.liang.product.dto.ProductRequest;
 import com.liang.product.dto.ProductResponse;
 import com.liang.product.dto.ProductResponseDetail;
@@ -16,15 +11,9 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import static com.liang.shared.api.ControllerHandler.*;
 
 @RestController
 @RequiredArgsConstructor
@@ -50,18 +39,18 @@ public class ProductController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<HttpBodyResponse<ProductResponse>> view(@PathVariable Long id) {
+    public ResponseEntity<HttpBodyResponse<ProductResponseDetail>> view(@PathVariable Long id) {
         return responseSucceed(productService.view(id));
     }
 
     @PostMapping
-    public ResponseEntity<HttpBodyResponse<ProductResponse>> create(
+    public ResponseEntity<HttpBodyResponse<ProductResponseDetail>> create(
             @Valid @RequestBody ProductRequest request) {
         return responseCreated(productService.create(request));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<HttpBodyResponse<ProductResponse>> update(
+    public ResponseEntity<HttpBodyResponse<ProductResponseDetail>> update(
             @PathVariable Long id, @Valid @RequestBody ProductRequest request) {
         return responseSucceed(productService.update(id, request));
     }
@@ -71,4 +60,17 @@ public class ProductController {
         productService.delete(id);
         return responseDeleted();
     }
+
+    @PatchMapping("/{id}/active")
+    public ResponseEntity<Void> active(@PathVariable Long id) {
+        productService.active(id);
+        return responseOK();
+    }
+
+    @PatchMapping("/{id}/inactive")
+    public ResponseEntity<Void> inactive(@PathVariable Long id) {
+        productService.inactive(id);
+        return responseOK();
+    }
+
 }

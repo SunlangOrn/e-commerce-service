@@ -39,6 +39,6 @@ public class ProductPublicController {
 
     @GetMapping("/{id}")
     public ResponseEntity<HttpBodyResponse<ProductResponse>> view(@PathVariable Long id) {
-        return responseSucceed(productService.view(id));
+        return responseSucceed(productService.viewPublic(id));
     }
 }

@@ -7,6 +7,7 @@ import com.liang.product.dto.ProductRequest;
 import com.liang.product.dto.ProductResponse;
 import com.liang.product.dto.ProductResponseDetail;
 import com.liang.product.entity.Product;
+import com.liang.product.entity.ProductStatus;
 import com.liang.product.mapper.ProductMapper;
 import com.liang.product.repository.ProductRepository;
 import com.liang.shared.api.NotFoundException;
@@ -39,7 +40,7 @@ public class ProductServiceImpl implements ProductService {
         String cleanKeyword = (keyword != null && !keyword.isBlank()) ? keyword.trim() : null;
 
         Page<Product> products = productRepository.searchProducts(
-                Status.ACTIVE,
+                ProductStatus.ACTIVE,
                 categoryId,
                 cleanKeyword,
                 pageable
@@ -49,7 +50,7 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
-    public ProductResponse view(Long id) {
+    public ProductResponse viewPublic(Long id) {
         return productMapper.toResponse(findVisibleOrThrow(id));
     }
 
@@ -65,8 +66,13 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
+    public ProductResponseDetail view(Long id) {
+        return productMapper.toDetailResponse(findOrThrow(id));
+    }
+
+    @Override
     @Transactional
-    public ProductResponse create(ProductRequest request) {
+    public ProductResponseDetail create(ProductRequest request) {
         Product product = productMapper.from(request);
 
         if (request.getCategoryId() != null) {
@@ -79,15 +85,15 @@ public class ProductServiceImpl implements ProductService {
             product.setStockQuantity(0);
         }
         if (product.getStatus() == null) {
-            product.setStatus(Status.ACTIVE);
+            product.setStatus(ProductStatus.ACTIVE);
         }
 
-        return productMapper.toResponse(productRepository.save(product));
+        return productMapper.toDetailResponse(productRepository.save(product));
     }
 
     @Override
     @Transactional
-    public ProductResponse update(Long id, ProductRequest request) {
+    public ProductResponseDetail update(Long id, ProductRequest request) {
         Product product = findOrThrow(id);
 
         if (request.getCategoryId() != null) {
@@ -97,7 +103,7 @@ public class ProductServiceImpl implements ProductService {
         }
 
         productMapper.updateFrom(request, product);
-        return productMapper.toResponse(productRepository.save(product));
+        return productMapper.toDetailResponse(productRepository.save(product));
     }
 
     @Override
@@ -107,13 +113,31 @@ public class ProductServiceImpl implements ProductService {
         productRepository.delete(product);
     }
 
+    @Override
+    @Transactional
+    public void active(Long id) {
+        Product product = findOrThrow(id);
+        product.setStatus(ProductStatus.ACTIVE);
+        productRepository.save(product);
+    }
+
+    @Override
+    @Transactional
+    public void inactive(Long id) {
+        Product product = findOrThrow(id);
+        product.setStatus(ProductStatus.INACTIVE);
+        productRepository.save(product);
+    }
+
+    //for admin
     private Product findOrThrow(Long id) {
         return productRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Product not found with id: " + id));
     }
 
+    //for user
     private Product findVisibleOrThrow(Long id) {
-        return productRepository.findByIdAndStatus(id, Status.ACTIVE)
+        return productRepository.findByIdAndStatus(id, ProductStatus.ACTIVE)
                 .orElseThrow(() -> new NotFoundException("Product not found or inactive with id: " + id));
     }
 }

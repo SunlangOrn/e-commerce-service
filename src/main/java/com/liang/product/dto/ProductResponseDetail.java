@@ -13,6 +13,7 @@ public class ProductResponseDetail {
 
     private Long id;
     private Long categoryId;
+    private String categoryName;
     private String name;
     private String description;
     private BigDecimal price;
@@ -20,4 +21,5 @@ public class ProductResponseDetail {
     private String imageUrl;
     private String status;
     private Instant createdAt;
+    private Instant updatedAt;
 }

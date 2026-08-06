@@ -9,6 +9,7 @@ import com.liang.cart.repository.CartItemRepository;
 import com.liang.cart.repository.CartRepository;
 import com.liang.category.entity.Status;
 import com.liang.product.entity.Product;
+import com.liang.product.entity.ProductStatus;
 import com.liang.product.repository.ProductRepository;
 import com.liang.shared.api.NotFoundException;
 import com.liang.shared.metadata.Metadata;
@@ -57,7 +58,7 @@ public class CartServiceImpl implements CartService {
     public CartResponse addItem(Metadata metadata, CartItemRequest request) {
         Cart cart = getOrCreateCart(metadata.getUserId());
 
-        Product product = productRepository.findByIdAndStatus(request.getProductId(), Status.ACTIVE)
+        Product product = productRepository.findByIdAndStatus(request.getProductId(), ProductStatus.ACTIVE)
                 .orElseThrow(() -> new NotFoundException("Product not found or currently unavailable"));
 
         CartItem item = cartItemRepository.findByCartIdAndProductId(cart.getId(), product.getId())
@@ -98,7 +99,7 @@ public class CartServiceImpl implements CartService {
 
         Product product = item.getProduct();
 
-        if (product.getStatus() != Status.ACTIVE) {
+        if (product.getStatus() != ProductStatus.ACTIVE) {
             throw new IllegalStateException("This product is no longer active");
         }
 

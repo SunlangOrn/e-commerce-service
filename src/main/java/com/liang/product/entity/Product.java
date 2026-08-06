@@ -38,7 +38,7 @@ public class Product {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    private Status status = Status.ACTIVE;
+    private ProductStatus status  = ProductStatus.INACTIVE;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id")

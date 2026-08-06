@@ -11,14 +11,20 @@ public interface ProductService {
     // Public catalog - active products only.
     Page<ProductResponse> browse(Integer page, Integer size, Long categoryId, String keyword);
 
-    ProductResponse view(Long id);
+    ProductResponse viewPublic(Long id);
 
     Page<ProductResponseDetail> listAll(Integer page, Integer size);
 
-    ProductResponse create(ProductRequest request);
+    ProductResponseDetail view(Long id);
 
-    ProductResponse update(Long id, ProductRequest request);
+    ProductResponseDetail create(ProductRequest request);
+
+    ProductResponseDetail update(Long id, ProductRequest request);
 
     void delete(Long id);
+
+    void active(Long id);
+
+    void inactive(Long id);
 
 }
