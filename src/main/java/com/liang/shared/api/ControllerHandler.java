@@ -31,6 +31,10 @@ public class ControllerHandler {
     return ResponseEntity.noContent().build();
   }
 
+  public static ResponseEntity<Void> responseOK() {
+      return ResponseEntity.ok().build();
+  }
+
   public static <T> ResponseEntity<HttpBodyResponse<T>> response(
       HttpStatus status, String message, T data) {
     return ResponseEntity.status(status)

@@ -1,6 +1,9 @@
 package com.liang.shared.api;
 
 import java.util.Map;
+
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.JwtException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -21,12 +24,6 @@ public class GlobalExceptionHandler {
             (first, second) -> first));
     return ResponseEntity.badRequest()
         .body(ApiResponse.fail("Validation failed", "VALIDATION_ERROR", fields));
-  }
-
-  @ExceptionHandler(AuthenticationException.class)
-  ResponseEntity<ApiResponse<Void>> authentication(AuthenticationException ex) {
-    return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-        .body(ApiResponse.fail("Authentication required", "UNAUTHORIZED", ex.getMessage()));
   }
 
   @ExceptionHandler(AccessDeniedException.class)
@@ -52,4 +49,24 @@ public class GlobalExceptionHandler {
     return ResponseEntity.status(HttpStatus.CONFLICT)
         .body(ApiResponse.fail(ex.getMessage(), "CONFLICT", null));
   }
+
+    @ExceptionHandler(AuthenticationException.class)
+    ResponseEntity<ApiResponse<Void>> authentication(AuthenticationException ex) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(ApiResponse.fail("Authentication required", "UNAUTHORIZED", ex.getMessage()));
+    }
+
+    @ExceptionHandler(ExpiredJwtException.class)
+    ResponseEntity<ApiResponse<Void>> expiredJwt(ExpiredJwtException ex) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(ApiResponse.fail("Token has expired", "TOKEN_EXPIRED", ex.getMessage()));
+    }
+
+    @ExceptionHandler(JwtException.class)
+    ResponseEntity<ApiResponse<Void>> jwtError(JwtException ex) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(ApiResponse.fail("Invalid authentication token", "INVALID_TOKEN", ex.getMessage()));
+    }
+
+
 }

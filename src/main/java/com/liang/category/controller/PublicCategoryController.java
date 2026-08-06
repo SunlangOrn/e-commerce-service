@@ -18,9 +18,8 @@ public class PublicCategoryController {
   private final CategoryService categoryService;
 
   @GetMapping
-  public ResponseEntity<HttpBodyResponse<List<CategoryResponse>>> publicList(
-      @RequestParam(required = false) Long parentId) {
-    return responseSucceed(categoryService.publicList(parentId));
+  public ResponseEntity<HttpBodyResponse<List<CategoryResponse>>> publicList() {
+    return responseSucceed(categoryService.publicList());
   }
 
   @GetMapping("/{id}")

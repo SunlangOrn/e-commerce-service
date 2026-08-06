@@ -1,3 +1,3 @@
-INSERT INTO categories (name, parent_id) VALUES
-    ('Electronics', NULL),
-    ('Clothing', NULL);
+INSERT INTO categories (name) VALUES
+    ('Electronics'),
+    ('Clothing');

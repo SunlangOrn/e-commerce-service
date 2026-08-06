@@ -2,6 +2,7 @@ package com.liang.category.dto;
 
 import com.liang.category.entity.Status;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -14,8 +15,6 @@ public class CategoryRequest {
   @NotBlank
   @Size(max = 100)
   private String name;
-
-  private Long parentId;
-
+  @Pattern(regexp = "^(ACTIIVE|INACTIVE)$")
   private String status;
 }

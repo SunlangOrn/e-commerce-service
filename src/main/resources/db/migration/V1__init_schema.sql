@@ -41,10 +41,10 @@ CREATE TABLE addresses (
 CREATE TABLE categories (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
-    parent_id BIGINT NULL,
     status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
-    deleted_at TIMESTAMP NULL,
-    CONSTRAINT fk_categories_parent FOREIGN KEY (parent_id) REFERENCES categories(id)
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+    deleted_at TIMESTAMP NULL
 );
 
 CREATE TABLE products (

@@ -1,8 +1,8 @@
 -- 1. SEED USERS (Password for all: 'Password123!')
 INSERT INTO users (name, email, password, phone, role, status) VALUES
 ('System Admin', 'admin@example.com', '$2a$10$7R.q1.3fHjC4m2B9Z3Q2.uI5X1K6N.o0dM8K8k2e3f4g5h6i7j8k', '012345678', 'ADMIN', 'ACTIVE'),
-('John Doe', 'john.doe@example.com', '$2a$10$7R.q1.3fHjC4m2B9Z3Q2.uI5X1K6N.o0dM8K8k2e3f4g5h6i7j8k', '098765432', 'CUSTOMER', 'ACTIVE'),
-('Sreyroth Mao', 'sreyroth@example.com', '$2a$10$7R.q1.3fHjC4m2B9Z3Q2.uI5X1K6N.o0dM8K8k2e3f4g5h6i7j8k', '0881234567', 'CUSTOMER', 'ACTIVE');
+('John Doe', 'john.doe@example.com', '$2a$10$7R.q1.3fHjC4m2B9Z3Q2.uI5X1K6N.o0dM8K8k2e3f4g5h6i7j8k', '098765432', 'USER', 'ACTIVE'),
+('Sreyroth Mao', 'sreyroth@example.com', '$2a$10$7R.q1.3fHjC4m2B9Z3Q2.uI5X1K6N.o0dM8K8k2e3f4g5h6i7j8k', '0881234567', 'USER', 'ACTIVE');
 
 -- 2. SEED ADDRESSES (Assumes user IDs generated above)
 INSERT INTO addresses (user_id, full_name, phone, address_line, city, province, postal_code, is_default, latitude, longitude) VALUES
@@ -10,10 +10,10 @@ INSERT INTO addresses (user_id, full_name, phone, address_line, city, province, 
 (2, 'John Doe', '098765432', 'Street 271, Sangkat Takhmao', 'Phnom Penh', 'Kandal', '12000', TRUE, 11.483333, 104.950000);
 
 -- 3. SEED SUB-CATEGORIES (Parent IDs refer to root categories inserted in V2)
-INSERT INTO categories (name, parent_id, status) VALUES
-('Smartphones', 1, 'ACTIVE'),
-('Laptops', 1, 'ACTIVE'),
-('Accessories', 1, 'ACTIVE');
+INSERT INTO categories (name, status) VALUES
+('Smartphones', 'ACTIVE'),
+('Laptops',  'ACTIVE'),
+('Accessories', 'ACTIVE');
 
 -- 4. SEED PRODUCTS
 INSERT INTO products (category_id, name, description, price, stock_quantity, image_url, status) VALUES

@@ -10,34 +10,23 @@ import org.mapstruct.*;
 @Mapper(
         componentModel = "spring",
         nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE,
-        unmappedTargetPolicy = ReportingPolicy.IGNORE)
+        unmappedTargetPolicy = ReportingPolicy.IGNORE
+)
 public interface CategoryMapper {
 
-    @Mapping(target = "parentId", source = "parent.id")
     CategoryResponseDetail toResponseDetail(Category category);
 
-    @Mapping(target = "parentId", source = "parent.id")
     CategoryResponse toResponse(Category category);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "deletedAt", ignore = true)
-    @Mapping(target = "parent", ignore = true)
-    @Mapping(target = "subcategories", ignore = true)
     @Mapping(target = "products", ignore = true)
-    @Mapping(target = "status", source = "status")
+    @Mapping(target = "status", expression = "java(mapStringToStatus(request.getStatus()))")
     Category from(CategoryRequest request);
-
-    @Mapping(target = "id", ignore = true)
-    @Mapping(target = "deletedAt", ignore = true)
-    @Mapping(target = "parent", ignore = true)
-    @Mapping(target = "subcategories", ignore = true)
-    @Mapping(target = "products", ignore = true)
-    @Mapping(target = "status", source = "status")
-    void updateFrom(CategoryRequest request, @MappingTarget Category category);
 
     default Status mapStringToStatus(String statusStr) {
         if (statusStr == null || statusStr.isBlank()) {
-            return Status.ACTIVE; // Default fallback value
+            return Status.ACTIVE;
         }
         try {
             return Status.valueOf(statusStr.toUpperCase());
@@ -46,7 +35,6 @@ public interface CategoryMapper {
         }
     }
 
-    // Helper method to convert Status enum -> String
     default String mapStatusToString(Status status) {
         return status != null ? status.name() : null;
     }

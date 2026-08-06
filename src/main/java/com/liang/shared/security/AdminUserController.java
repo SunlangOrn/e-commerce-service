@@ -20,11 +20,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-/**
- * ADMIN only (protected by the blanket {@code /api/admin/**} rule in {@link SecurityConfiguration}).
- * Lets an admin see every account and grant/revoke the ADMIN role. An admin can't change their
- * own role or demote the very last remaining admin - see {@link AdminUserServiceImpl}.
- */
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/admin/users")
