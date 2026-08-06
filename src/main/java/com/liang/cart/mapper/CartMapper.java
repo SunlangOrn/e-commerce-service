@@ -2,6 +2,7 @@ package com.liang.cart.mapper;
 
 import com.liang.cart.dto.CartItemResponse;
 import com.liang.cart.dto.CartResponse;
+import com.liang.cart.dto.CartResponseDetail;
 import com.liang.cart.entity.Cart;
 import com.liang.cart.entity.CartItem;
 import java.math.BigDecimal;
@@ -17,6 +18,9 @@ public interface CartMapper {
 
     @Mapping(target = "total", source = "items", qualifiedByName = "calculateTotal")
     CartResponse toCartResponse(Cart cart);
+
+    @Mapping(target = "total", source = "items", qualifiedByName = "calculateTotal")
+    CartResponseDetail toCartResponseDetail(Cart cart);
 
     @Mapping(target = "productId", source = "product.id")
     @Mapping(target = "productName", source = "product.name")

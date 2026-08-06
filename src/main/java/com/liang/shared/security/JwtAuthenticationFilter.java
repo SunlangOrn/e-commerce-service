@@ -18,7 +18,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.web.servlet.HandlerExceptionResolver;
 
-/** Reads "Authorization: Bearer <token>" and authenticates the request if valid. */
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 

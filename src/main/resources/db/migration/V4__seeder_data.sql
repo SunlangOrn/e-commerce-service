@@ -1,8 +1,8 @@
 -- 1. SEED USERS (Password for all: 'Password123!')
 INSERT INTO users (name, email, password, phone, role, status) VALUES
 ('System Admin', 'admin@example.com', '$2a$10$7R.q1.3fHjC4m2B9Z3Q2.uI5X1K6N.o0dM8K8k2e3f4g5h6i7j8k', '012345678', 'ADMIN', 'ACTIVE'),
-('John Doe', 'john.doe@example.com', '$2a$10$7R.q1.3fHjC4m2B9Z3Q2.uI5X1K6N.o0dM8K8k2e3f4g5h6i7j8k', '098765432', 'USER', 'ACTIVE'),
-('Sreyroth Mao', 'sreyroth@example.com', '$2a$10$7R.q1.3fHjC4m2B9Z3Q2.uI5X1K6N.o0dM8K8k2e3f4g5h6i7j8k', '0881234567', 'USER', 'ACTIVE');
+('John Doe', 'john.doe@example.com', '$2a$10$7R.q1.3fHjC4m2B9Z3Q2.uI5X1K6N.o0dM8K8k2e3f4g5h6i7j8k', '098765432', 'CUSTOMER', 'ACTIVE'),
+('Sreyroth Mao', 'sreyroth@example.com', '$2a$10$7R.q1.3fHjC4m2B9Z3Q2.uI5X1K6N.o0dM8K8k2e3f4g5h6i7j8k', '0881234567', 'CUSTOMER', 'ACTIVE');
 
 -- 2. SEED ADDRESSES (Assumes user IDs generated above)
 INSERT INTO addresses (user_id, full_name, phone, address_line, city, province, postal_code, is_default, latitude, longitude) VALUES

@@ -2,6 +2,7 @@ package com.liang.cart.service;
 
 import com.liang.cart.dto.CartItemRequest;
 import com.liang.cart.dto.CartResponse;
+import com.liang.cart.dto.CartResponseDetail;
 import com.liang.cart.entity.Cart;
 import com.liang.cart.entity.CartItem;
 import com.liang.cart.mapper.CartMapper;
@@ -32,21 +33,22 @@ public class CartServiceImpl implements CartService {
     private final CartMapper cartMapper;
 
     @Override
-    public Page<CartResponse> getAllCarts(Pageable pageable) {
+    public Page<CartResponseDetail> getAllUserCarts(Pageable pageable) {
         return cartRepository.findAll(pageable)
-                .map(cartMapper::toCartResponse);
+                .map(cartMapper::toCartResponseDetail);
     }
 
     @Override
     @MetadataHandler
-    public CartResponse getCartByUserId(Metadata metadata) {
-        Cart cart = cartRepository.findByUserIdWithDetails(metadata.getUserId())
-                .orElseThrow(() -> new NotFoundException("Cart not found for user ID: " + metadata.getUserId()));
-        return cartMapper.toCartResponse(cart);
+    public CartResponseDetail getCartByUserId(Long userId) {
+        Cart cart = cartRepository.findByUserIdWithDetails(userId)
+                .orElseThrow(() -> new NotFoundException("Cart not found for user ID: " + userId));
+        return cartMapper.toCartResponseDetail(cart);
     }
 
     @Override
     @MetadataHandler
+    @Transactional
     public CartResponse viewMine(Metadata metadata) {
         Cart cart = getOrCreateCart(metadata.getUserId());
         return cartMapper.toCartResponse(cart);

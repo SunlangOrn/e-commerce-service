@@ -2,15 +2,16 @@ package com.liang.cart.service;
 
 import com.liang.cart.dto.CartItemRequest;
 import com.liang.cart.dto.CartResponse;
+import com.liang.cart.dto.CartResponseDetail;
 import com.liang.shared.metadata.Metadata;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 public interface CartService {
 
-    Page<CartResponse> getAllCarts(Pageable pageable);
+    Page<CartResponseDetail> getAllUserCarts(Pageable pageable);
 
-    CartResponse getCartByUserId(Metadata metadata);
+    CartResponseDetail getCartByUserId(Long userId);
 
     CartResponse viewMine(Metadata metadata);
 

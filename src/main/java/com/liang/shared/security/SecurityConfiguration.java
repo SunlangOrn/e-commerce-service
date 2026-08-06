@@ -2,8 +2,8 @@ package com.liang.shared.security;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -30,6 +30,7 @@ public class SecurityConfiguration {
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http.csrf(AbstractHttpConfigurer::disable)
+                .cors(Customizer.withDefaults())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         // 1. PUBLIC AUTH ENDPOINTS
@@ -39,14 +40,11 @@ public class SecurityConfiguration {
                                 "/api/v1/auth/refresh",
                                 "/api/v1/auth/logout"
                         ).permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/v1/products/**", "/api/v1/categories/**").permitAll()
-                        .requestMatchers("/api/v1/files/**").permitAll()
+                        .requestMatchers("/api/v1/files/**").hasRole(ADMIN)
                         .requestMatchers("/admin/api/v1/**").hasRole(ADMIN)
                         .requestMatchers("/api/v1/auth/me").authenticated()
-                        .requestMatchers("/api/v1/cart/**", "/api/v1/addresses/**", "/api/v1/orders/**")
+                        .requestMatchers("/api/v1/cart/**", "/api/v1/addresses/**", "/api/v1/orders/**","/api/v1/products/**", "/api/v1/categories/**")
                         .hasAnyRole(CUSTOMER, ADMIN)
-
-                        // 5. CATCH-ALL REQUIRE AUTHENTICATION
                         .anyRequest().authenticated())
                 .headers(headers -> headers.frameOptions(frame -> frame.sameOrigin()))
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

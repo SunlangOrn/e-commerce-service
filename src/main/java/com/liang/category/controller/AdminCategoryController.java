@@ -24,11 +24,11 @@ import static com.liang.shared.api.ControllerHandler.*;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/admin/api/v1/categories")
-public class CategoryController {
+public class AdminCategoryController {
 
     private final CategoryService categoryService;
 
-    @GetMapping
+    @GetMapping()
     public ResponseEntity<HttpBodyResponse<List<CategoryResponseDetail>>> list() {
         return responseSucceed(categoryService.listAll());
     }

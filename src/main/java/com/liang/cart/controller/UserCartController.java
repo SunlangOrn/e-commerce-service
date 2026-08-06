@@ -24,12 +24,12 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/v1/cart")
-public class PublicCartController {
+@RequestMapping("/api/v1/carts")
+public class UserCartController {
 
     private final CartService cartService;
 
-    @GetMapping
+    @GetMapping("/mycart")
     public ResponseEntity<HttpBodyResponse<CartResponse>> viewMine() {
         return responseSucceed(cartService.viewMine(new Metadata()));
     }

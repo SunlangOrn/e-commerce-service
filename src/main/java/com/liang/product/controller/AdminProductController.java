@@ -1,7 +1,6 @@
 package com.liang.product.controller;
 
 import com.liang.product.dto.ProductRequest;
-import com.liang.product.dto.ProductResponse;
 import com.liang.product.dto.ProductResponseDetail;
 import com.liang.product.service.ProductService;
 import com.liang.shared.entity.HttpBodyPagingResponse;
@@ -18,7 +17,7 @@ import static com.liang.shared.api.ControllerHandler.*;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/admin/api/v1/products")
-public class ProductController {
+public class AdminProductController {
 
     private final ProductService productService;
 
