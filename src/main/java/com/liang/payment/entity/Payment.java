@@ -3,8 +3,11 @@ package com.liang.payment.entity;
 import com.liang.order.entity.Order;
 import com.liang.order.entity.OrderStatus;
 import jakarta.persistence.*;
+import jdk.jfr.Timespan;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -24,25 +27,28 @@ public class Payment {
     private Order order;
 
     @Column(name = "payment_method", nullable = false, length = 30)
-    private String paymentMethod; // COD, KHQR, ABA_PAY
+    private String paymentMethod = "BAKONG_KHQR";
 
     @Enumerated(EnumType.STRING)
     @Column(name = "payment_status", nullable = false, length = 30)
-    private PaymentStatus paymentStatus; // PENDING, SUCCESS, FAILED
+    private PaymentStatus paymentStatus = PaymentStatus.PENDING; // PENDING, SUCCESS, FAILED
 
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal amount;
 
-    @Column(name = "transaction_reference", length = 100)
+    @Column(name = "transaction_reference")
     private String transactionReference;
 
+    @Column(name = "paid_at")
     private Instant paidAt;
+
+    @CreationTimestamp
+    @Column(name = "created_at")
     private Instant createdAt;
 
-    @PrePersist
-    void prePersist() {
-        this.createdAt = Instant.now();
-    }
+    @UpdateTimestamp
+    @Column(name = "updated_at")
+    private Instant updatedAt;
 
     public void markAsPaid(String reference) {
         this.paymentStatus = PaymentStatus.SUCCESS;

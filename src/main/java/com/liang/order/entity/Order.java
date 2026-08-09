@@ -49,7 +49,7 @@ public class Order {
 
     // --- Financial & Status Fields ---
     @Column(name = "total_amount", nullable = false, precision = 10, scale = 2)
-    private BigDecimal totalAmount;
+    private BigDecimal totalAmount = BigDecimal.ZERO;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "order_status", nullable = false, length = 30)

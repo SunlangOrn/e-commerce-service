@@ -23,3 +23,13 @@ security:
     access-token-minutes: ${SECURITY_JWT_ACCESS_TOKEN_MINUTES:15}
     refresh-token-days: ${SECURITY_JWT_REFRESH_TOKEN_DAYS:7}
 
+bakong:
+  # Base URL points to the SIT Sandbox instead of Production
+  api-url: ${BAKONG_API_URL:https://nbc.gov.kh}
+
+  # Paste your SIT Sandbox bearer token inside this fallback variable
+  token: ${BAKONG_AUTH_TOKEN:bkv2_03c348cb41e49237554c9deddc1940e6c0da68f4c610e4b4ac4a9f73a6}
+
+  account-id: ${BAKONG_ACCOUNT_ID:sunlang_orn@bkrt}
+  merchant-name: ${BAKONG_MERCHANT_NAME:Liang Store}
+  merchant-city: ${BAKONG_MERCHANT_CITY:Phnom Penh}
