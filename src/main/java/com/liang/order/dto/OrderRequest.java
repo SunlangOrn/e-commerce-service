@@ -1,7 +1,9 @@
 package com.liang.order.dto;
 
+import com.liang.payment.entity.PaymentMethod;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -17,7 +19,11 @@ public class OrderRequest {
     private Long addressId;
 
     @NotBlank(message = "Payment method is required")
-    private String paymentMethod;
+    @Pattern(
+            regexp = "ABA_PAYWAY_KHQR|CASH_ON_DELIVERY",
+            message = "Payment method must be ABA_PAYWAY_KHQR or CASH_ON_DELIVERY"
+    )
+    private PaymentMethod paymentMethod;
 
     private String note;
 }

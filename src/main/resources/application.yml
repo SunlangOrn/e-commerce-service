@@ -1,5 +1,5 @@
 server:
-  port: 8080
+  port: 16800
 
 spring:
   application:
@@ -22,14 +22,11 @@ security:
     secret: ${SECURITY_JWT_SECRET:change-this-secret-to-a-long-random-production-value-32-bytes}
     access-token-minutes: ${SECURITY_JWT_ACCESS_TOKEN_MINUTES:15}
     refresh-token-days: ${SECURITY_JWT_REFRESH_TOKEN_DAYS:7}
+payment:
+  aba-payway:
+    api-url: ${ABA_PAYWAY_API_URL:https://checkout-sandbox.payway.com.kh/api/payment-gateway/v1/payments/generate-qr}
+    merchant-id: ${ABA_PAYWAY_MERCHANT_ID:keng.dara.online}
+    api-key: ${ABA_PAYWAY_API_KEY:your_sandbox_api_key_here}
+    callback-url: ${ABA_PAYWAY_CALLBACK_URL:https://api.yourdomain.com/api/v1/payments/webhook/aba-callback}
 
-bakong:
-  # Base URL points to the SIT Sandbox instead of Production
-  api-url: ${BAKONG_API_URL:https://nbc.gov.kh}
-
-  # Paste your SIT Sandbox bearer token inside this fallback variable
-  token: ${BAKONG_AUTH_TOKEN:bkv2_03c348cb41e49237554c9deddc1940e6c0da68f4c610e4b4ac4a9f73a6}
-
-  account-id: ${BAKONG_ACCOUNT_ID:sunlang_orn@bkrt}
-  merchant-name: ${BAKONG_MERCHANT_NAME:Liang Store}
-  merchant-city: ${BAKONG_MERCHANT_CITY:Phnom Penh}
+  mock-mode: ${PAYMENT_MOCK_MODE:true}

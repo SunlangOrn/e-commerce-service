@@ -14,6 +14,8 @@ import com.liang.order.entity.OrderItem;
 import com.liang.order.entity.OrderStatus;
 import com.liang.order.mapper.OrderMapper;
 import com.liang.order.repository.OrderRepository;
+import com.liang.payment.entity.Payment;
+import com.liang.payment.entity.PaymentMethod;
 import com.liang.payment.entity.PaymentStatus;
 import com.liang.product.entity.Product;
 import com.liang.product.repository.ProductRepository;
@@ -74,6 +76,8 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
+    @MetadataHandler
+    @Transactional
     public OrderResponseDetail adminUpdateStatus(Long id, OrderRequestUpdate requestUpdate) {
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Order not found with id: " + id));
@@ -93,6 +97,8 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
+    @MetadataHandler
+    @Transactional
     public OrderResponse checkout(Metadata metadata, OrderRequest request) {
         Long userId = metadata.getUserId();
 
@@ -139,6 +145,17 @@ public class OrderServiceImpl implements OrderService {
 
         Order savedOrder = orderRepository.save(order);
 
+        if (request.getPaymentMethod() == PaymentMethod.CASH_ON_DELIVERY) {
+            Payment payment = new Payment();
+            payment.setOrder(savedOrder);
+            payment.setPaymentMethod(PaymentMethod.CASH_ON_DELIVERY);
+            payment.setPaymentStatus(PaymentStatus.PENDING);
+            payment.setAmount(savedOrder.getTotalAmount());
+
+            savedOrder.setPayment(payment);
+            orderRepository.save(savedOrder);
+        }
+
         cart.getItems().clear();
         cartRepository.save(cart);
 
@@ -146,12 +163,14 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
+    @MetadataHandler
     public Page<OrderResponse> list(Metadata metadata, Pageable pageable) {
         return orderRepository.findByUserId(metadata.getUserId(), pageable)
                 .map(orderMapper::fromOrder);
     }
 
     @Override
+    @MetadataHandler
     public OrderResponse view(Metadata metadata, Long id) {
         Order order = orderRepository.findByIdAndUserId(id, metadata.getUserId())
                 .orElseThrow(() -> new NotFoundException("Order not found with id: " + id));
@@ -159,6 +178,8 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
+    @MetadataHandler
+    @Transactional
     public OrderResponse cancel(Metadata metadata, Long id) {
 
         Order order = orderRepository.findByIdAndUserId(id, metadata.getUserId())

@@ -20,6 +20,7 @@ public class OrderResponse {
     private BigDecimal totalAmount;
     private String orderStatus;
     private String paymentStatus;
+    private String paymentMethod;
     private Integer totalItems;
     private List<OrderItemResponse> items;
     private Instant createdAt;

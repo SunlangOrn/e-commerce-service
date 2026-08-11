@@ -18,6 +18,7 @@ public interface OrderMapper {
     @Mapping(target = "orderStatus", source = "orderStatus", qualifiedByName = "orderStatusToString")
     @Mapping(target = "paymentStatus", source = "paymentStatus", qualifiedByName = "paymentStatusToString")
     @Mapping(target = "totalItems", expression = "java(order.getOrderItems() != null ? order.getOrderItems().size() : 0)")
+    @Mapping(target = "paymentMethod", expression = "java(mapPaymentMethod(order))")
     OrderResponse fromOrder(Order order);
 
     @Mapping(target = "userId", source = "user.id")
@@ -26,6 +27,7 @@ public interface OrderMapper {
     @Mapping(target = "items", source = "orderItems")
     @Mapping(target = "orderStatus", source = "orderStatus", qualifiedByName = "orderStatusToString")
     @Mapping(target = "paymentStatus", source = "paymentStatus", qualifiedByName = "paymentStatusToString")
+    @Mapping(target = "paymentMethod", expression = "java(mapPaymentMethod(order))")
     OrderResponseDetail mapDetail(Order order);
 
     @Mapping(target = "productId", source = "product.id")
@@ -65,5 +67,13 @@ public interface OrderMapper {
         } catch (IllegalArgumentException e) {
             throw new IllegalArgumentException("Invalid Payment Status: " + paymentStatus);
         }
+    }
+
+    default String mapPaymentMethod(Order order) {
+        if (order == null || order.getPayment() == null || order.getPayment().getPaymentMethod() == null) {
+            return null;
+        }
+
+        return order.getPayment().getPaymentMethod().name();
     }
 }
