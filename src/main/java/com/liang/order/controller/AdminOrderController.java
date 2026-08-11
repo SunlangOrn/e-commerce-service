@@ -1,5 +1,7 @@
 package com.liang.order.controller;
 
+import static com.liang.shared.api.ControllerHandler.responseSucceed;
+
 import com.liang.order.dto.OrderRequestUpdate;
 import com.liang.order.dto.OrderResponseDetail;
 import com.liang.order.service.OrderService;
@@ -11,8 +13,6 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import static com.liang.shared.api.ControllerHandler.responseSucceed;
 
 @RestController
 @RequiredArgsConstructor
@@ -46,5 +46,4 @@ public class AdminOrderController {
     ) {
         return responseSucceed(orderService.adminUpdateStatus(id, request));
     }
-
 }

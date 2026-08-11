@@ -43,7 +43,12 @@ public class SecurityConfiguration {
                         .requestMatchers("/api/v1/files/**").hasRole(ADMIN)
                         .requestMatchers("/admin/api/v1/**").hasRole(ADMIN)
                         .requestMatchers("/api/v1/auth/me").authenticated()
-                        .requestMatchers("/api/v1/cart/**", "/api/v1/addresses/**", "/api/v1/orders/**","/api/v1/products/**", "/api/v1/categories/**")
+                        .requestMatchers(
+                                "/api/v1/carts/**",
+                                "/api/v1/addresses/**",
+                                "/api/v1/orders/**",
+                                "/api/v1/products/**",
+                                "/api/v1/categories/**")
                         .hasAnyRole(CUSTOMER, ADMIN)
                         .anyRequest().authenticated())
                 .headers(headers -> headers.frameOptions(frame -> frame.sameOrigin()))

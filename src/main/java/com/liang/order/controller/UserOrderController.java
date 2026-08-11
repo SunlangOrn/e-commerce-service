@@ -1,5 +1,8 @@
 package com.liang.order.controller;
 
+import static com.liang.shared.api.ControllerHandler.responseCreated;
+import static com.liang.shared.api.ControllerHandler.responseSucceed;
+
 import com.liang.order.dto.OrderRequest;
 import com.liang.order.dto.OrderResponse;
 import com.liang.order.service.OrderService;
@@ -13,9 +16,6 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import static com.liang.shared.api.ControllerHandler.responseCreated;
-import static com.liang.shared.api.ControllerHandler.responseSucceed;
 
 @RestController
 @RequiredArgsConstructor
@@ -35,7 +35,7 @@ public class UserOrderController {
         return responseSucceed(orderService.list(new Metadata(), pageable));
     }
 
-    @PatchMapping("/checkout")
+    @PostMapping("/checkout")
     public ResponseEntity<HttpBodyResponse<OrderResponse>> checkout(
             @Valid @RequestBody OrderRequest request
     ) {
