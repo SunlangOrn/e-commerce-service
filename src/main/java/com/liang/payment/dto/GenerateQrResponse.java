@@ -1,12 +1,12 @@
 package com.liang.payment.dto;
 
-public record GenerateQrResponse(
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
+public record GenerateQrResponse(
         Status status,
         String qrString,
         String qrImage,
-        String abaPayDeeplink
-) {
-}
-
-
+        @JsonProperty("abapay_deeplink") String abaPayDeeplink
+) {}

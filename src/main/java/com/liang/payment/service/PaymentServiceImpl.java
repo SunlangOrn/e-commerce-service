@@ -1,9 +1,14 @@
 package com.liang.payment.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.liang.order.entity.Order;
+import com.liang.order.entity.OrderItem;
 import com.liang.payment.AbaPayWayProperties;
 import com.liang.payment.aba.AbaPayWayClient;
-import com.liang.payment.dto.*;
+import com.liang.payment.dto.AbaPayWayResponse;
+import com.liang.payment.dto.GenerateQrRequest;
+import com.liang.payment.dto.GenerateQrResponse;
+import com.liang.payment.dto.PaymentInitiationResult;
 import com.liang.payment.entity.Payment;
 import com.liang.payment.entity.PaymentMethod;
 import com.liang.payment.entity.PaymentStatus;
@@ -11,99 +16,75 @@ import com.liang.payment.repository.PaymentRepository;
 import com.liang.shared.api.NotFoundException;
 import com.liang.shared.metadata.Metadata;
 import com.liang.shared.metadata.MetadataHandler;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.Base64;
-import java.util.concurrent.ThreadLocalRandom;
+import java.util.List;
+import java.util.Map;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class PaymentServiceImpl implements PaymentService {
 
-    private static final String PAYMENT_OPTION_KHQR = "abapay_khqr";
-    private static final String QR_TYPE_COLOR = "template3_color";
-
     private final PaymentRepository paymentRepository;
     private final AbaPayWayClient abaPayWayClient;
     private final AbaPayWayProperties properties;
+    private final ObjectMapper objectMapper;
 
     @Override
     @Transactional
-    public PaymentInitiationResult initiatePayment(Order order, String paymentMethodRaw) {
-        PaymentMethod method = PaymentMethod.valueOf(paymentMethodRaw.toUpperCase());
-        String currency = properties.currency().toUpperCase();
-
+    public PaymentInitiationResult initiatePayment(Order order, PaymentMethod paymentMethod) {
         Payment payment = new Payment();
         payment.setOrder(order);
-        payment.setPaymentMethod(method);
+        payment.setPaymentMethod(paymentMethod);
         payment.setPaymentStatus(PaymentStatus.PENDING);
         payment.setAmount(order.getTotalAmount());
-        payment.setCurrency(currency);
+        payment.setCurrency(order.getCurrency());
 
-        order.setPayment(payment);
-        order.setCurrency(currency);
+        payment = paymentRepository.save(payment);
 
-        AbaPayWayResponse qrResponse = null;
-        if (method == PaymentMethod.ABA_PAYWAY_KHQR) {
-            qrResponse = generateQrInternal(payment);
-            payment.setTransactionReference(qrResponse.getTranId());
+        AbaPayWayResponse abaResponse = null;
+        if (paymentMethod == PaymentMethod.ABA_PAYWAY_KHQR) {
+            abaResponse = initiateAbaQr(payment);
         }
 
-        Payment saved = paymentRepository.save(payment);
-        return new PaymentInitiationResult(saved, qrResponse);
+        return new PaymentInitiationResult(payment, abaResponse);
     }
 
+    @Override
     @MetadataHandler
     @Transactional
-    @Override
     public AbaPayWayResponse createAbaKHQR(Metadata metadata, Long orderId) {
-        Payment payment = findUserPayment(orderId, metadata.getUserId());
+        Payment payment = paymentRepository.findByOrderIdAndOrderUserId(orderId, metadata.getUserId())
+                .orElseThrow(() -> new NotFoundException("Payment not found for order id: " + orderId));
 
         if (payment.getPaymentMethod() != PaymentMethod.ABA_PAYWAY_KHQR) {
-            throw new IllegalStateException("This order is not configured for ABA PayWay KHQR payment");
+            throw new IllegalStateException("This order is not ABA PayWay KHQR payment");
         }
         if (payment.getPaymentStatus() == PaymentStatus.SUCCESS) {
             throw new IllegalStateException("This order is already paid");
         }
 
-        AbaPayWayResponse response = generateQrInternal(payment);
-        payment.setTransactionReference(response.getTranId());
-        paymentRepository.save(payment);
-        return response;
+        return initiateAbaQr(payment);
     }
 
+    @Override
     @MetadataHandler
     @Transactional
-    @Override
     public AbaPayWayResponse checkAbaKHQR(Metadata metadata, Long orderId) {
-        Payment payment = findUserPayment(orderId, metadata.getUserId());
-
-        if (payment.getPaymentStatus() == PaymentStatus.SUCCESS) {
-            return AbaPayWayResponse.builder()
-                    .orderId(orderId)
-                    .tranId(payment.getTransactionReference())
-                    .amount(payment.getAmount())
-                    .currency(payment.getCurrency())
-                    .statusCode("0")
-                    .statusMessage("Transaction already verified and paid")
-                    .build();
-        }
+        Payment payment = paymentRepository.findByOrderIdAndOrderUserId(orderId, metadata.getUserId())
+                .orElseThrow(() -> new NotFoundException("Payment not found for order id: " + orderId));
 
         if (payment.getTransactionReference() == null || payment.getTransactionReference().isBlank()) {
             throw new IllegalStateException("ABA transaction has not been created yet");
         }
 
-        CheckTransactionResponse response = abaPayWayClient.checkTransaction(payment.getTransactionReference());
+        var response = abaPayWayClient.checkTransaction(payment.getTransactionReference());
 
         boolean paid = response != null
                 && response.data() != null
@@ -125,79 +106,96 @@ public class PaymentServiceImpl implements PaymentService {
                 .build();
     }
 
-    /**
-     * Prepares parameters, generates the cryptographic hash, and executes the call to ABA PayWay.
-     */
-    private AbaPayWayResponse generateQrInternal(Payment payment) {
-        String currency = properties.currency().toUpperCase();
-        boolean isKHR = "KHR".equals(currency);
+    private AbaPayWayResponse initiateAbaQr(Payment payment) {
+        Order order = payment.getOrder();
+        String tranId = buildTranId(order.getId());
 
-        // Format amount strictly according to currency rule
-        String formattedAmount = isKHR
-                ? payment.getAmount().setScale(0, RoundingMode.HALF_UP).toPlainString()
-                : payment.getAmount().setScale(2, RoundingMode.HALF_UP).toPlainString();
-
-        String tranId = buildTranId(payment.getOrder().getId());
-        String reqTime = abaPayWayClient.reqTimeNow();
-
-        // Base64 encode empty items array as required by ABA purchase API
-        String itemsBase64 = Base64.getEncoder().encodeToString("[]".getBytes(StandardCharsets.UTF_8));
-        Integer lifetime = properties.lifetimeMinutes();
-
-        String hash = abaPayWayClient.generateHash(
-                reqTime,
-                properties.merchantId(),
-                tranId,
-                formattedAmount,
-                itemsBase64,
-                PAYMENT_OPTION_KHQR,
-                currency,
-                lifetime,
-                QR_TYPE_COLOR
-        );
+        payment.setTransactionReference(tranId);
+        payment.setPaymentStatus(PaymentStatus.PENDING);
+        paymentRepository.save(payment);
 
         GenerateQrRequest request = new GenerateQrRequest(
-                reqTime,
+                abaPayWayClient.reqTimeNow(),
                 properties.merchantId(),
                 tranId,
-                formattedAmount,
-                itemsBase64,
-                PAYMENT_OPTION_KHQR,
-                currency,
-                hash,
-                lifetime,
-                QR_TYPE_COLOR
+                payment.getAmount().setScale(2, RoundingMode.HALF_UP).toPlainString(),
+                encodeOrderItems(order),
+                firstName(order.getShippingFullName()),
+                lastName(order.getShippingFullName()),
+                order.getUser().getEmail(),
+                order.getShippingPhone(),
+                "purchase",
+                "abapay_khqr",
+                base64OrNull(properties.callbackUrl()),
+                properties.currency(),
+                "",
+                "",
+                "",
+                "",
+                String.valueOf(properties.lifetimeMinutes()),
+                "template3_color",
+                null
         );
 
-        log.info("Sending ABA PayWay Generate QR Request: tranId={}, amount={}, currency={}", tranId, formattedAmount, currency);
         GenerateQrResponse response = abaPayWayClient.generateQr(request);
 
         return AbaPayWayResponse.builder()
-                .orderId(payment.getOrder().getId())
+                .orderId(order.getId())
                 .tranId(tranId)
                 .amount(payment.getAmount())
-                .currency(currency)
+                .currency(properties.currency())
                 .qrString(response != null ? response.qrString() : null)
                 .qrImage(response != null ? response.qrImage() : null)
                 .abaPayDeeplink(response != null ? response.abaPayDeeplink() : null)
                 .statusCode(response != null && response.status() != null ? response.status().code() : null)
                 .statusMessage(response != null && response.status() != null ? response.status().message() : null)
-                .expiresAt(LocalDateTime.now().plusMinutes(lifetime))
+                .expiresAt(LocalDateTime.now().plusMinutes(properties.lifetimeMinutes()))
                 .build();
     }
 
-    private Payment findUserPayment(Long orderId, Long userId) {
-        return paymentRepository.findByOrderIdAndOrderUserId(orderId, userId)
-                .orElseThrow(() -> new NotFoundException("Payment not found for order id: " + orderId));
+    private String buildTranId(Long orderId) {
+        return "ORD" + orderId + System.currentTimeMillis() % 1_000_000L;
     }
 
-    private String buildTranId(Long orderId) {
-        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyMMddHHmm"));
-        int randomSuffix = ThreadLocalRandom.current().nextInt(100, 999);
-        String rawTranId = "O" + orderId + "T" + timestamp + randomSuffix;
-        if (rawTranId.length() > 20) {
-            log.warn("Generated ABA tranId exceeded 20 chars, truncating: {}", rawTranId);
+    private String encodeOrderItems(Order order) {
+        try {
+            List<Map<String, Object>> items = order.getOrderItems().stream()
+                    .map(this::mapItem)
+                    .toList();
+            String json = objectMapper.writeValueAsString(items);
+            return Base64.getEncoder().encodeToString(json.getBytes(StandardCharsets.UTF_8));
+        } catch (Exception e) {
+            throw new IllegalStateException("Cannot build ABA PayWay items", e);
         }
-        return rawTranId.length() > 20 ? rawTranId.substring(0, 20) : rawTranId;
+    }
+
+    private Map<String, Object> mapItem(OrderItem item) {
+        return Map.of(
+                "name", item.getProductName(),
+                "quantity", item.getQuantity(),
+                "price", item.getPrice().setScale(2, RoundingMode.HALF_UP)
+        );
+    }
+
+    private String base64OrNull(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return Base64.getEncoder().encodeToString(value.getBytes(StandardCharsets.UTF_8));
+    }
+
+    private String firstName(String fullName) {
+        if (fullName == null || fullName.isBlank()) {
+            return "Customer";
+        }
+        return fullName.trim().split("\\s+")[0];
+    }
+
+    private String lastName(String fullName) {
+        if (fullName == null || fullName.isBlank()) {
+            return "Ecommerce";
+        }
+        String[] parts = fullName.trim().split("\\s+");
+        return parts.length > 1 ? parts[parts.length - 1] : "Customer";
     }
 }

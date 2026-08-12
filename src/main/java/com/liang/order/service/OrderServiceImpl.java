@@ -155,9 +155,8 @@ public class OrderServiceImpl implements OrderService {
 
         Order savedOrder = orderRepository.save(order);
 
-        // All ABA/COD-specific logic (tranId, hash, QR request) lives in PaymentService now —
-        // this method no longer knows or cares how a given payment method works.
-        PaymentInitiationResult initiation = paymentService.initiatePayment(savedOrder, request.getPaymentMethod());
+        // Initiate payment based on requested PaymentMethod (ABA / COD)
+        PaymentInitiationResult initiation = paymentService.initiatePayment(savedOrder, PaymentMethod.valueOf(request.getPaymentMethod()));
         Payment payment = initiation.payment();
 
         savedOrder.setPayment(payment);

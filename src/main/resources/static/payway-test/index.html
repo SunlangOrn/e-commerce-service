@@ -1,0 +1,122 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ABA PayWay KHQR Test</title>
+  <style>
+    body { margin: 0; font-family: Arial, sans-serif; background: #f5f7fb; color: #17202a; }
+    main { max-width: 760px; margin: 32px auto; padding: 0 16px; }
+    .panel { background: white; border: 1px solid #dde3ee; border-radius: 8px; padding: 18px; margin-bottom: 14px; }
+    .row { display: grid; grid-template-columns: 160px 1fr; gap: 10px; align-items: center; margin: 10px 0; }
+    input, select, textarea { width: 100%; box-sizing: border-box; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; }
+    button { padding: 10px 14px; border: 0; border-radius: 6px; background: #0052cc; color: white; cursor: pointer; }
+    button.secondary { background: #334155; }
+    button:disabled { opacity: .55; cursor: not-allowed; }
+    .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+    #qrImage { width: 280px; max-width: 100%; border: 1px solid #e2e8f0; border-radius: 8px; display: none; }
+    pre { white-space: pre-wrap; word-break: break-word; background: #0f172a; color: #dbeafe; padding: 12px; border-radius: 8px; }
+  </style>
+</head>
+<body>
+<main>
+  <section class="panel">
+    <h2>ABA PayWay KHQR Local Test</h2>
+    <div class="row"><label>Base URL</label><input id="baseUrl" value="http://localhost:16800"></div>
+    <div class="row"><label>Bearer Token</label><textarea id="token" rows="3" placeholder="Paste customer access token"></textarea></div>
+    <div class="row"><label>Address ID</label><input id="addressId" value="1"></div>
+    <div class="row">
+      <label>Payment</label>
+      <select id="paymentMethod">
+        <option value="ABA_PAYWAY_KHQR">ABA PayWay KHQR</option>
+        <option value="CASH_ON_DELIVERY">Cash on delivery</option>
+      </select>
+    </div>
+    <div class="actions">
+      <button onclick="checkout()">1. Checkout</button>
+      <button class="secondary" onclick="checkStatus()">2. Check ABA Status</button>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h3>QR</h3>
+    <p id="summary">No order yet.</p>
+    <img id="qrImage" alt="ABA KHQR">
+    <div class="actions">
+      <button id="deepLinkBtn" onclick="openDeepLink()" disabled>Open ABA Deep Link</button>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h3>Response</h3>
+    <pre id="output">{}</pre>
+  </section>
+</main>
+
+<script>
+let currentOrderId = null;
+let currentDeepLink = null;
+
+function headers() {
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer ' + document.getElementById('token').value.trim()
+  };
+}
+
+function show(data) {
+  document.getElementById('output').textContent = JSON.stringify(data, null, 2);
+}
+
+async function checkout() {
+  const baseUrl = document.getElementById('baseUrl').value.trim();
+  const body = {
+    addressId: Number(document.getElementById('addressId').value),
+    paymentMethod: document.getElementById('paymentMethod').value,
+    note: 'Local ABA PayWay test'
+  };
+
+  const res = await fetch(baseUrl + '/api/v1/orders/checkout', {
+    method: 'POST',
+    headers: headers(),
+    body: JSON.stringify(body)
+  });
+  const json = await res.json();
+  show(json);
+  if (!res.ok) return;
+
+  const order = json.data;
+  currentOrderId = order.id;
+  document.getElementById('summary').textContent = 'Order #' + currentOrderId + ' - ' + order.paymentMethod;
+
+  const aba = order.abaPayWayResponse;
+  if (aba && aba.qrImage) {
+    const img = document.getElementById('qrImage');
+    img.src = aba.qrImage.startsWith('data:') ? aba.qrImage : 'data:image/png;base64,' + aba.qrImage;
+    img.style.display = 'block';
+  }
+  if (aba && aba.abaPayDeeplink) {
+    currentDeepLink = aba.abaPayDeeplink;
+    document.getElementById('deepLinkBtn').disabled = false;
+  }
+}
+
+async function checkStatus() {
+  if (!currentOrderId) {
+    alert('Checkout first');
+    return;
+  }
+  const baseUrl = document.getElementById('baseUrl').value.trim();
+  const res = await fetch(baseUrl + '/api/v1/payments/orders/' + currentOrderId + '/aba-khqr/status', {
+    method: 'GET',
+    headers: headers()
+  });
+  show(await res.json());
+}
+
+function openDeepLink() {
+  if (currentDeepLink) window.location.href = currentDeepLink;
+}
+</script>
+</body>
+</html>
