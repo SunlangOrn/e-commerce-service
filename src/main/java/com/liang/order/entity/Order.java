@@ -51,6 +51,9 @@ public class Order {
     @Column(name = "total_amount", nullable = false, precision = 10, scale = 2)
     private BigDecimal totalAmount = BigDecimal.ZERO;
 
+    @Column(name = "currency" )
+    private String currency = "KHR";
+
     @Enumerated(EnumType.STRING)
     @Column(name = "order_status", nullable = false, length = 30)
     private OrderStatus orderStatus;

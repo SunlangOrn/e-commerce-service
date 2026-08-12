@@ -14,9 +14,9 @@ import lombok.Setter;
 public class OrderRequestUpdate {
 
     @NotBlank(message = "Order status is required")
-    @Pattern(regexp = "^(?i)(PENDING|PROCESSING|SHIPPED|DELIVERED|CANCELLED)$")
+    @Pattern(regexp = "^(?i)(PENDING|PROCESSING|SHIPPED|DELIVERED|CANCELLED)$", message = "Invalid order status")
     private String orderStatus;
 
-    @Pattern(regexp = "^(?i)(PENDING|PROCESSING|SHIPPED|DELIVERED|CANCELLED)$")
+    @Pattern(regexp = "^(?i)(PENDING|SUCCESS|FAILED|CANCELLED)$", message = "Invalid payment status")
     private String paymentStatus;
 }

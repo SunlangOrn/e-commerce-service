@@ -35,6 +35,7 @@ public class OrderResponseDetail {
     private String note;
 
     private BigDecimal totalAmount;
+    private String currency;
 
     private List<OrderItemResponse> items;
 
