@@ -14,15 +14,13 @@ import com.liang.order.entity.OrderItem;
 import com.liang.order.entity.OrderStatus;
 import com.liang.order.mapper.OrderMapper;
 import com.liang.order.repository.OrderRepository;
-import com.liang.payment.AbaPayWayProperties;
-import com.liang.payment.aba.AbaPayWayClient;
-import com.liang.payment.dto.AbaPayWayResponse;
-import com.liang.payment.dto.GenerateQrRequest;
-import com.liang.payment.dto.GenerateQrResponse;
+import com.liang.payment.dto.PaymentInitiationResult;
 import com.liang.payment.entity.Payment;
 import com.liang.payment.entity.PaymentMethod;
 import com.liang.payment.entity.PaymentStatus;
+import com.liang.payment.service.PaymentService;
 import com.liang.product.entity.Product;
+import com.liang.product.entity.ProductStatus;
 import com.liang.product.repository.ProductRepository;
 import com.liang.shared.api.NotFoundException;
 import com.liang.shared.metadata.Metadata;
@@ -37,11 +35,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.UUID;
-import java.util.concurrent.ThreadLocalRandom;
 
 @Slf4j
 @Service
@@ -55,9 +49,7 @@ public class OrderServiceImpl implements OrderService {
     private final UserRepository userRepository;
     private final ProductRepository productRepository;
     private final OrderMapper orderMapper;
-
-    private final AbaPayWayClient abaPayWayClient;
-    private final AbaPayWayProperties abaProperties;
+    private final PaymentService paymentService;
 
     @Override
     @MetadataHandler
@@ -96,6 +88,10 @@ public class OrderServiceImpl implements OrderService {
 
         if (requestUpdate.getOrderStatus() != null && !requestUpdate.getOrderStatus().isBlank()) {
             OrderStatus newOrderStatus = orderMapper.mapStringToOrderStatus(requestUpdate.getOrderStatus());
+
+            // Restore stock exactly once, only on the transition INTO cancelled.
+            restoreStockIfCancelling(order, newOrderStatus);
+
             order.setOrderStatus(newOrderStatus);
         }
 
@@ -126,16 +122,18 @@ public class OrderServiceImpl implements OrderService {
         }
 
         Order order = new Order();
-        order.setOrderNumber("ORD-" + System.currentTimeMillis() + "-" + UUID.randomUUID().toString().substring(0, 4).toUpperCase());
+        order.setOrderNumber(generateOrderNumber());
         order.setUser(user);
         order.snapshotAddress(address);
-
         order.setOrderStatus(OrderStatus.PENDING);
         order.setPaymentStatus(PaymentStatus.PENDING);
 
         for (CartItem cartItem : cart.getItems()) {
             Product product = cartItem.getProduct();
 
+            if (product.getDeletedAt() != null || product.getStatus() != ProductStatus.ACTIVE) {
+                throw new IllegalStateException("Product no longer available: " + product.getName());
+            }
             if (product.getStockQuantity() < cartItem.getQuantity()) {
                 throw new IllegalStateException("Insufficient stock for product: " + product.getName());
             }
@@ -156,87 +154,22 @@ public class OrderServiceImpl implements OrderService {
         }
 
         Order savedOrder = orderRepository.save(order);
-        AbaPayWayResponse qrResponse = null;
 
-        if ("CASH_ON_DELIVERY".equalsIgnoreCase(request.getPaymentMethod())) {
-            Payment cash = new Payment();
-            cash.setOrder(savedOrder);
-            cash.setPaymentMethod(PaymentMethod.CASH_ON_DELIVERY);
-            cash.setPaymentStatus(PaymentStatus.PENDING);
-            cash.setAmount(savedOrder.getTotalAmount());
+        // All ABA/COD-specific logic (tranId, hash, QR request) lives in PaymentService now —
+        // this method no longer knows or cares how a given payment method works.
+        PaymentInitiationResult initiation = paymentService.initiatePayment(savedOrder, request.getPaymentMethod());
+        Payment payment = initiation.payment();
 
-            savedOrder.setPayment(cash);
-            orderRepository.save(savedOrder);
+        savedOrder.setPayment(payment);
+        savedOrder = orderRepository.save(savedOrder);
 
-        } else if ("ABA_PAYWAY_KHQR".equalsIgnoreCase(request.getPaymentMethod())) {
-            // FIX 1: Generate tranId strictly under 20 characters
-            String tranId = buildTranId(savedOrder.getId());
-
-            Payment qrPayment = new Payment();
-            qrPayment.setOrder(savedOrder);
-            qrPayment.setPaymentMethod(PaymentMethod.ABA_PAYWAY_KHQR);
-            qrPayment.setPaymentStatus(PaymentStatus.PENDING);
-            qrPayment.setAmount(savedOrder.getTotalAmount());
-            qrPayment.setTransactionReference(tranId);
-
-            savedOrder.setPayment(qrPayment);
-            orderRepository.save(savedOrder);
-
-            String currency = abaProperties.currency().toUpperCase();
-            boolean isKHR = "KHR".equals(currency);
-
-            BigDecimal formattedAmount = isKHR
-                    ? savedOrder.getTotalAmount().setScale(0, RoundingMode.HALF_UP)
-                    : savedOrder.getTotalAmount().setScale(2, RoundingMode.HALF_UP);
-
-            String reqTime = abaPayWayClient.reqTimeNow();
-
-            String hash = abaPayWayClient.generateHash(
-                    reqTime,
-                    abaProperties.merchantId(),
-                    tranId,
-                    formattedAmount,
-                    "abapay_khqr",
-                    currency
-            );
-
-            // FIX 3: Construct request with dynamic currency and exact 9 parameters
-            GenerateQrRequest qrRequest = new GenerateQrRequest(
-                    reqTime,
-                    abaProperties.merchantId(),
-                    tranId,
-                    formattedAmount,
-                    "abapay_khqr",
-                    currency,
-                    hash,
-                    abaProperties.lifetimeMinutes(),
-                    "template3_color"
-            );
-
-            GenerateQrResponse abaResponse = abaPayWayClient.generateQr(qrRequest);
-
-            qrResponse = AbaPayWayResponse.builder()
-                    .orderId(savedOrder.getId())
-                    .tranId(tranId)
-                    .amount(savedOrder.getTotalAmount())
-                    .currency(currency)
-                    .qrString(abaResponse != null ? abaResponse.qrString() : null)
-                    .qrImage(abaResponse != null ? abaResponse.qrImage() : null)
-                    .abaPayDeeplink(abaResponse != null ? abaResponse.abaPayDeeplink() : null)
-                    .statusCode(abaResponse != null && abaResponse.status() != null ? abaResponse.status().code() : null)
-                    .statusMessage(abaResponse != null && abaResponse.status() != null ? abaResponse.status().message() : null)
-                    .expiresAt(LocalDateTime.now().plusMinutes(abaProperties.lifetimeMinutes()))
-                    .build();
-        }
-
-        // Clear user cart
         cart.getItems().clear();
         cartRepository.save(cart);
 
         OrderResponse response = orderMapper.fromOrder(savedOrder);
 
-        if (qrResponse != null) {
-            response.setAbaPayWayResponse(qrResponse);
+        if (payment.getPaymentMethod() == PaymentMethod.ABA_PAYWAY_KHQR) {
+            response.setAbaPayWayResponse(initiation.abaPayWayResponse());
         }
 
         return response;
@@ -267,10 +200,11 @@ public class OrderServiceImpl implements OrderService {
         if (order.getOrderStatus() != OrderStatus.PENDING) {
             throw new IllegalStateException("Only orders with PENDING status can be cancelled");
         }
-
         if (order.getPaymentStatus() == PaymentStatus.SUCCESS) {
             throw new IllegalStateException("Cannot cancel an order that has already been paid");
         }
+
+        restoreStockIfCancelling(order, OrderStatus.CANCELLED);
 
         order.setOrderStatus(OrderStatus.CANCELLED);
         order.setPaymentStatus(PaymentStatus.CANCELLED);
@@ -279,22 +213,27 @@ public class OrderServiceImpl implements OrderService {
             order.getPayment().setPaymentStatus(PaymentStatus.CANCELLED);
         }
 
-        for (OrderItem item : order.getOrderItems()) {
-            Product product = item.getProduct();
-            product.setStockQuantity(product.getStockQuantity() + item.getQuantity());
-            productRepository.save(product);
-        }
-
         Order savedOrder = orderRepository.save(order);
         return orderMapper.fromOrder(savedOrder);
     }
 
-    // Helper method to keep total length <= 20 characters
-    private String buildTranId(Long orderId) {
-        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyMMddHHmm"));
-        int randomSuffix = ThreadLocalRandom.current().nextInt(100, 999);
-        String rawTranId = "O" + orderId + "T" + timestamp + randomSuffix;
+    /**
+     * Restores stock for every line item exactly once, only when transitioning
+     * INTO CANCELLED from a non-cancelled state. Shared by cancel() and adminUpdateStatus()
+     * so stock can no longer be silently skipped via the admin status-update path.
+     */
+    private void restoreStockIfCancelling(Order order, OrderStatus newStatus) {
+        if (newStatus == OrderStatus.CANCELLED && order.getOrderStatus() != OrderStatus.CANCELLED) {
+            for (OrderItem item : order.getOrderItems()) {
+                Product product = item.getProduct();
+                product.setStockQuantity(product.getStockQuantity() + item.getQuantity());
+                productRepository.save(product);
+            }
+        }
+    }
 
-        return rawTranId.length() > 20 ? rawTranId.substring(0, 20) : rawTranId;
+    private String generateOrderNumber() {
+        return "ORD-" + System.currentTimeMillis() + "-"
+                + UUID.randomUUID().toString().substring(0, 4).toUpperCase();
     }
 }

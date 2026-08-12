@@ -1,11 +1,9 @@
 package com.liang.payment.service;
 
+import com.liang.order.entity.Order;
 import com.liang.payment.AbaPayWayProperties;
 import com.liang.payment.aba.AbaPayWayClient;
-import com.liang.payment.dto.AbaPayWayResponse;
-import com.liang.payment.dto.CheckTransactionResponse;
-import com.liang.payment.dto.GenerateQrRequest;
-import com.liang.payment.dto.GenerateQrResponse;
+import com.liang.payment.dto.*;
 import com.liang.payment.entity.Payment;
 import com.liang.payment.entity.PaymentMethod;
 import com.liang.payment.entity.PaymentStatus;
@@ -18,6 +16,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -33,6 +32,32 @@ public class PaymentServiceImpl implements PaymentService {
     private final AbaPayWayClient abaPayWayClient;
     private final AbaPayWayProperties properties;
 
+    @Override
+    @Transactional
+    public PaymentInitiationResult initiatePayment(Order order, String paymentMethodRaw) {
+        PaymentMethod method = PaymentMethod.valueOf(paymentMethodRaw.toUpperCase());
+        String currency = properties.currency().toUpperCase();
+
+        Payment payment = new Payment();
+        payment.setOrder(order);
+        payment.setPaymentMethod(method);
+        payment.setPaymentStatus(PaymentStatus.PENDING);
+        payment.setAmount(order.getTotalAmount());
+        payment.setCurrency(currency);
+
+        order.setPayment(payment);
+        order.setCurrency(currency);
+
+        AbaPayWayResponse qrResponse = null;
+        if (method == PaymentMethod.ABA_PAYWAY_KHQR) {
+            qrResponse = generateQrInternal(payment);
+            payment.setTransactionReference(qrResponse.getTranId());
+        }
+
+        Payment saved = paymentRepository.save(payment);
+        return new PaymentInitiationResult(saved, qrResponse);
+    }
+
     @MetadataHandler
     @Transactional
     @Override
@@ -42,64 +67,14 @@ public class PaymentServiceImpl implements PaymentService {
         if (payment.getPaymentMethod() != PaymentMethod.ABA_PAYWAY_KHQR) {
             throw new IllegalStateException("This order is not configured for ABA PayWay KHQR payment");
         }
-
         if (payment.getPaymentStatus() == PaymentStatus.SUCCESS) {
             throw new IllegalStateException("This order is already paid");
         }
 
-        String tranId = buildTranId(orderId);
-        payment.setTransactionReference(tranId);
-        payment.setPaymentStatus(PaymentStatus.PENDING);
+        AbaPayWayResponse response = generateQrInternal(payment);
+        payment.setTransactionReference(response.getTranId());
         paymentRepository.save(payment);
-
-        String currency = properties.currency().toUpperCase();
-        boolean isKHR = "KHR".equals(currency);
-
-        var formattedAmount = isKHR
-                ? payment.getAmount().setScale(0, RoundingMode.HALF_UP)
-                : payment.getAmount().setScale(2, RoundingMode.HALF_UP);
-
-        String reqTime = abaPayWayClient.reqTimeNow();
-
-        // 1. Calculate HMAC-SHA512 Hash
-        String hash = abaPayWayClient.generateHash(
-                reqTime,
-                properties.merchantId(),
-                tranId,
-                formattedAmount,
-                "abapay_khqr",
-                currency
-        );
-
-        // 2. Pass EXACTLY 9 arguments matching GenerateQrRequest definition
-        GenerateQrRequest request = new GenerateQrRequest(
-                reqTime,
-                properties.merchantId(),
-                tranId,
-                formattedAmount,
-                "abapay_khqr",
-                currency,
-                hash,
-                properties.lifetimeMinutes(),
-                "template3_color"
-        );
-
-        GenerateQrResponse response = abaPayWayClient.generateQr(request);
-
-        LocalDateTime expiresAt = LocalDateTime.now().plusMinutes(properties.lifetimeMinutes());
-
-        return AbaPayWayResponse.builder()
-                .orderId(orderId)
-                .tranId(tranId)
-                .amount(payment.getAmount())
-                .currency(currency)
-                .qrString(response != null ? response.qrString() : null)
-                .qrImage(response != null ? response.qrImage() : null)
-                .abaPayDeeplink(response != null ? response.abaPayDeeplink() : null)
-                .statusCode(response != null && response.status() != null ? response.status().code() : null)
-                .statusMessage(response != null && response.status() != null ? response.status().message() : null)
-                .expiresAt(expiresAt)
-                .build();
+        return response;
     }
 
     @MetadataHandler
@@ -113,7 +88,7 @@ public class PaymentServiceImpl implements PaymentService {
                     .orderId(orderId)
                     .tranId(payment.getTransactionReference())
                     .amount(payment.getAmount())
-                    .currency(properties.currency())
+                    .currency(payment.getCurrency())
                     .statusCode("0")
                     .statusMessage("Transaction already verified and paid")
                     .build();
@@ -131,12 +106,8 @@ public class PaymentServiceImpl implements PaymentService {
                 && response.data().paymentStatusCode() == 0;
 
         if (paid) {
+            // markAsPaid() already propagates SUCCESS/PROCESSING onto the order — don't repeat it here.
             payment.markAsPaid(payment.getTransactionReference());
-
-            if (payment.getOrder() != null) {
-                payment.getOrder().setPaymentStatus(PaymentStatus.SUCCESS);
-            }
-
             paymentRepository.save(payment);
         }
 
@@ -144,9 +115,47 @@ public class PaymentServiceImpl implements PaymentService {
                 .orderId(orderId)
                 .tranId(payment.getTransactionReference())
                 .amount(payment.getAmount())
-                .currency(properties.currency())
+                .currency(payment.getCurrency())
                 .statusCode(response != null && response.status() != null ? response.status().code() : null)
                 .statusMessage(response != null && response.status() != null ? response.status().message() : null)
+                .build();
+    }
+
+    /**
+     * Single source of truth for talking to ABA: tranId, hash, request, call.
+     * Used by both order checkout (initiatePayment) and manual regeneration (createAbaKHQR).
+     */
+    private AbaPayWayResponse generateQrInternal(Payment payment) {
+        String currency = properties.currency().toUpperCase();
+        boolean isKHR = "KHR".equals(currency);
+
+        BigDecimal formattedAmount = isKHR
+                ? payment.getAmount().setScale(0, RoundingMode.HALF_UP)
+                : payment.getAmount().setScale(2, RoundingMode.HALF_UP);
+
+        String tranId = buildTranId(payment.getOrder().getId());
+        String reqTime = abaPayWayClient.reqTimeNow();
+
+        String hash = abaPayWayClient.generateHash(
+                reqTime, properties.merchantId(), tranId, formattedAmount, "abapay_khqr", currency);
+
+        GenerateQrRequest request = new GenerateQrRequest(
+                reqTime, properties.merchantId(), tranId, formattedAmount,
+                "abapay_khqr", currency, hash, properties.lifetimeMinutes(), "template3_color");
+
+        GenerateQrResponse response = abaPayWayClient.generateQr(request);
+
+        return AbaPayWayResponse.builder()
+                .orderId(payment.getOrder().getId())
+                .tranId(tranId)
+                .amount(payment.getAmount())
+                .currency(currency)
+                .qrString(response != null ? response.qrString() : null)
+                .qrImage(response != null ? response.qrImage() : null)
+                .abaPayDeeplink(response != null ? response.abaPayDeeplink() : null)
+                .statusCode(response != null && response.status() != null ? response.status().code() : null)
+                .statusMessage(response != null && response.status() != null ? response.status().message() : null)
+                .expiresAt(LocalDateTime.now().plusMinutes(properties.lifetimeMinutes()))
                 .build();
     }
 
@@ -155,12 +164,17 @@ public class PaymentServiceImpl implements PaymentService {
                 .orElseThrow(() -> new NotFoundException("Payment not found for order id: " + orderId));
     }
 
-    // FIX: Keep total length strictly <= 20 characters for ABA PayWay limits
+    // NOTE: still truncates from the right on pathological inputs. Safe for now (orderId won't
+    // realistically exceed ~10 digits for years), but flagging: if it ever does, this quietly
+    // eats part of the random suffix and increases collision risk. Worth revisiting with a
+    // hashed/fixed-width token instead of raw orderId+timestamp concatenation.
     private String buildTranId(Long orderId) {
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyMMddHHmm"));
         int randomSuffix = ThreadLocalRandom.current().nextInt(100, 999);
         String rawTranId = "O" + orderId + "T" + timestamp + randomSuffix;
-
+        if (rawTranId.length() > 20) {
+            log.warn("Generated ABA tranId exceeded 20 chars, truncating: {}", rawTranId);
+        }
         return rawTranId.length() > 20 ? rawTranId.substring(0, 20) : rawTranId;
     }
 }
