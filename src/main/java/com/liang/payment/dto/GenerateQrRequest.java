@@ -1,7 +1,6 @@
 package com.liang.payment.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import java.math.BigDecimal;
 
 public record GenerateQrRequest(
 
@@ -15,7 +14,10 @@ public record GenerateQrRequest(
         String tranId,
 
         @JsonProperty("amount")
-        BigDecimal amount,
+        String amount,
+
+        @JsonProperty("items")
+        String items,
 
         @JsonProperty("payment_option")
         String paymentOption,

@@ -18,8 +18,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Base64;
 import java.util.concurrent.ThreadLocalRandom;
 
 @Slf4j
@@ -27,6 +29,9 @@ import java.util.concurrent.ThreadLocalRandom;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class PaymentServiceImpl implements PaymentService {
+
+    private static final String PAYMENT_OPTION_KHQR = "abapay_khqr";
+    private static final String QR_TYPE_COLOR = "template3_color";
 
     private final PaymentRepository paymentRepository;
     private final AbaPayWayClient abaPayWayClient;
@@ -106,7 +111,6 @@ public class PaymentServiceImpl implements PaymentService {
                 && response.data().paymentStatusCode() == 0;
 
         if (paid) {
-            // markAsPaid() already propagates SUCCESS/PROCESSING onto the order — don't repeat it here.
             payment.markAsPaid(payment.getTransactionReference());
             paymentRepository.save(payment);
         }
@@ -122,27 +126,50 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     /**
-     * Single source of truth for talking to ABA: tranId, hash, request, call.
-     * Used by both order checkout (initiatePayment) and manual regeneration (createAbaKHQR).
+     * Prepares parameters, generates the cryptographic hash, and executes the call to ABA PayWay.
      */
     private AbaPayWayResponse generateQrInternal(Payment payment) {
         String currency = properties.currency().toUpperCase();
         boolean isKHR = "KHR".equals(currency);
 
-        BigDecimal formattedAmount = isKHR
-                ? payment.getAmount().setScale(0, RoundingMode.HALF_UP)
-                : payment.getAmount().setScale(2, RoundingMode.HALF_UP);
+        // Format amount strictly according to currency rule
+        String formattedAmount = isKHR
+                ? payment.getAmount().setScale(0, RoundingMode.HALF_UP).toPlainString()
+                : payment.getAmount().setScale(2, RoundingMode.HALF_UP).toPlainString();
 
         String tranId = buildTranId(payment.getOrder().getId());
         String reqTime = abaPayWayClient.reqTimeNow();
 
+        // Base64 encode empty items array as required by ABA purchase API
+        String itemsBase64 = Base64.getEncoder().encodeToString("[]".getBytes(StandardCharsets.UTF_8));
+        Integer lifetime = properties.lifetimeMinutes();
+
         String hash = abaPayWayClient.generateHash(
-                reqTime, properties.merchantId(), tranId, formattedAmount, "abapay_khqr", currency);
+                reqTime,
+                properties.merchantId(),
+                tranId,
+                formattedAmount,
+                itemsBase64,
+                PAYMENT_OPTION_KHQR,
+                currency,
+                lifetime,
+                QR_TYPE_COLOR
+        );
 
         GenerateQrRequest request = new GenerateQrRequest(
-                reqTime, properties.merchantId(), tranId, formattedAmount,
-                "abapay_khqr", currency, hash, properties.lifetimeMinutes(), "template3_color");
+                reqTime,
+                properties.merchantId(),
+                tranId,
+                formattedAmount,
+                itemsBase64,
+                PAYMENT_OPTION_KHQR,
+                currency,
+                hash,
+                lifetime,
+                QR_TYPE_COLOR
+        );
 
+        log.info("Sending ABA PayWay Generate QR Request: tranId={}, amount={}, currency={}", tranId, formattedAmount, currency);
         GenerateQrResponse response = abaPayWayClient.generateQr(request);
 
         return AbaPayWayResponse.builder()
@@ -155,7 +182,7 @@ public class PaymentServiceImpl implements PaymentService {
                 .abaPayDeeplink(response != null ? response.abaPayDeeplink() : null)
                 .statusCode(response != null && response.status() != null ? response.status().code() : null)
                 .statusMessage(response != null && response.status() != null ? response.status().message() : null)
-                .expiresAt(LocalDateTime.now().plusMinutes(properties.lifetimeMinutes()))
+                .expiresAt(LocalDateTime.now().plusMinutes(lifetime))
                 .build();
     }
 
@@ -164,10 +191,6 @@ public class PaymentServiceImpl implements PaymentService {
                 .orElseThrow(() -> new NotFoundException("Payment not found for order id: " + orderId));
     }
 
-    // NOTE: still truncates from the right on pathological inputs. Safe for now (orderId won't
-    // realistically exceed ~10 digits for years), but flagging: if it ever does, this quietly
-    // eats part of the random suffix and increases collision risk. Worth revisiting with a
-    // hashed/fixed-width token instead of raw orderId+timestamp concatenation.
     private String buildTranId(Long orderId) {
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyMMddHHmm"));
         int randomSuffix = ThreadLocalRandom.current().nextInt(100, 999);
