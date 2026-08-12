@@ -14,6 +14,11 @@ import com.liang.order.entity.OrderItem;
 import com.liang.order.entity.OrderStatus;
 import com.liang.order.mapper.OrderMapper;
 import com.liang.order.repository.OrderRepository;
+import com.liang.payment.AbaPayWayProperties;
+import com.liang.payment.aba.AbaPayWayClient;
+import com.liang.payment.dto.AbaPayWayResponse;
+import com.liang.payment.dto.GenerateQrRequest;
+import com.liang.payment.dto.GenerateQrResponse;
 import com.liang.payment.entity.Payment;
 import com.liang.payment.entity.PaymentMethod;
 import com.liang.payment.entity.PaymentStatus;
@@ -25,14 +30,20 @@ import com.liang.shared.metadata.MetadataHandler;
 import com.liang.shared.security.User;
 import com.liang.shared.security.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -43,12 +54,14 @@ public class OrderServiceImpl implements OrderService {
     private final AddressRepository addressRepository;
     private final UserRepository userRepository;
     private final ProductRepository productRepository;
-    private  final OrderMapper orderMapper;
+    private final OrderMapper orderMapper;
+
+    private final AbaPayWayClient abaPayWayClient;
+    private final AbaPayWayProperties abaProperties;
 
     @Override
     @MetadataHandler
     public Page<OrderResponseDetail> adminList(Long filterUserId, String orderStatus, Pageable pageable) {
-
         OrderStatus statusEnum = orderMapper.mapStringToOrderStatus(orderStatus);
 
         if (filterUserId != null && statusEnum != null) {
@@ -68,7 +81,6 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @MetadataHandler
-    @Transactional
     public OrderResponseDetail adminView(Long id) {
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Order not found with id: " + id));
@@ -101,7 +113,6 @@ public class OrderServiceImpl implements OrderService {
     @Transactional
     public OrderResponse checkout(Metadata metadata, OrderRequest request) {
         Long userId = metadata.getUserId();
-
         User user = userRepository.getReferenceById(userId);
 
         Address address = addressRepository.findByIdAndUserId(request.getAddressId(), userId)
@@ -145,22 +156,90 @@ public class OrderServiceImpl implements OrderService {
         }
 
         Order savedOrder = orderRepository.save(order);
+        AbaPayWayResponse qrResponse = null;
 
-        if (request.getPaymentMethod() == PaymentMethod.CASH_ON_DELIVERY) {
-            Payment payment = new Payment();
-            payment.setOrder(savedOrder);
-            payment.setPaymentMethod(PaymentMethod.CASH_ON_DELIVERY);
-            payment.setPaymentStatus(PaymentStatus.PENDING);
-            payment.setAmount(savedOrder.getTotalAmount());
+        if ("CASH_ON_DELIVERY".equalsIgnoreCase(request.getPaymentMethod())) {
+            Payment cash = new Payment();
+            cash.setOrder(savedOrder);
+            cash.setPaymentMethod(PaymentMethod.CASH_ON_DELIVERY);
+            cash.setPaymentStatus(PaymentStatus.PENDING);
+            cash.setAmount(savedOrder.getTotalAmount());
 
-            savedOrder.setPayment(payment);
+            savedOrder.setPayment(cash);
             orderRepository.save(savedOrder);
+
+        } else if ("ABA_PAYWAY_KHQR".equalsIgnoreCase(request.getPaymentMethod())) {
+            // FIX 1: Generate tranId strictly under 20 characters
+            String tranId = buildTranId(savedOrder.getId());
+
+            Payment qrPayment = new Payment();
+            qrPayment.setOrder(savedOrder);
+            qrPayment.setPaymentMethod(PaymentMethod.ABA_PAYWAY_KHQR);
+            qrPayment.setPaymentStatus(PaymentStatus.PENDING);
+            qrPayment.setAmount(savedOrder.getTotalAmount());
+            qrPayment.setTransactionReference(tranId);
+
+            savedOrder.setPayment(qrPayment);
+            orderRepository.save(savedOrder);
+
+            String currency = abaProperties.currency().toUpperCase();
+            boolean isKHR = "KHR".equals(currency);
+
+            BigDecimal formattedAmount = isKHR
+                    ? savedOrder.getTotalAmount().setScale(0, RoundingMode.HALF_UP)
+                    : savedOrder.getTotalAmount().setScale(2, RoundingMode.HALF_UP);
+
+            String reqTime = abaPayWayClient.reqTimeNow();
+
+            String hash = abaPayWayClient.generateHash(
+                    reqTime,
+                    abaProperties.merchantId(),
+                    tranId,
+                    formattedAmount,
+                    "abapay_khqr",
+                    currency
+            );
+
+            // FIX 3: Construct request with dynamic currency and exact 9 parameters
+            GenerateQrRequest qrRequest = new GenerateQrRequest(
+                    reqTime,
+                    abaProperties.merchantId(),
+                    tranId,
+                    formattedAmount,
+                    "abapay_khqr",
+                    currency,
+                    hash,
+                    abaProperties.lifetimeMinutes(),
+                    "template3_color"
+            );
+
+            GenerateQrResponse abaResponse = abaPayWayClient.generateQr(qrRequest);
+
+            qrResponse = AbaPayWayResponse.builder()
+                    .orderId(savedOrder.getId())
+                    .tranId(tranId)
+                    .amount(savedOrder.getTotalAmount())
+                    .currency(currency)
+                    .qrString(abaResponse != null ? abaResponse.qrString() : null)
+                    .qrImage(abaResponse != null ? abaResponse.qrImage() : null)
+                    .abaPayDeeplink(abaResponse != null ? abaResponse.abaPayDeeplink() : null)
+                    .statusCode(abaResponse != null && abaResponse.status() != null ? abaResponse.status().code() : null)
+                    .statusMessage(abaResponse != null && abaResponse.status() != null ? abaResponse.status().message() : null)
+                    .expiresAt(LocalDateTime.now().plusMinutes(abaProperties.lifetimeMinutes()))
+                    .build();
         }
 
+        // Clear user cart
         cart.getItems().clear();
         cartRepository.save(cart);
 
-        return orderMapper.fromOrder(savedOrder);
+        OrderResponse response = orderMapper.fromOrder(savedOrder);
+
+        if (qrResponse != null) {
+            response.setAbaPayWayResponse(qrResponse);
+        }
+
+        return response;
     }
 
     @Override
@@ -182,15 +261,23 @@ public class OrderServiceImpl implements OrderService {
     @MetadataHandler
     @Transactional
     public OrderResponse cancel(Metadata metadata, Long id) {
-
         Order order = orderRepository.findByIdAndUserId(id, metadata.getUserId())
                 .orElseThrow(() -> new NotFoundException("Order not found with id: " + id));
 
         if (order.getOrderStatus() != OrderStatus.PENDING) {
-            throw new IllegalStateException("Only order with PENDING that can be cancel");
+            throw new IllegalStateException("Only orders with PENDING status can be cancelled");
+        }
+
+        if (order.getPaymentStatus() == PaymentStatus.SUCCESS) {
+            throw new IllegalStateException("Cannot cancel an order that has already been paid");
         }
 
         order.setOrderStatus(OrderStatus.CANCELLED);
+        order.setPaymentStatus(PaymentStatus.CANCELLED);
+
+        if (order.getPayment() != null) {
+            order.getPayment().setPaymentStatus(PaymentStatus.CANCELLED);
+        }
 
         for (OrderItem item : order.getOrderItems()) {
             Product product = item.getProduct();
@@ -200,5 +287,14 @@ public class OrderServiceImpl implements OrderService {
 
         Order savedOrder = orderRepository.save(order);
         return orderMapper.fromOrder(savedOrder);
+    }
+
+    // Helper method to keep total length <= 20 characters
+    private String buildTranId(Long orderId) {
+        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyMMddHHmm"));
+        int randomSuffix = ThreadLocalRandom.current().nextInt(100, 999);
+        String rawTranId = "O" + orderId + "T" + timestamp + randomSuffix;
+
+        return rawTranId.length() > 20 ? rawTranId.substring(0, 20) : rawTranId;
     }
 }

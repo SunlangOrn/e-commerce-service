@@ -26,11 +26,7 @@ public class UserOrderController {
 
     @GetMapping
     public ResponseEntity<HttpBodyResponse<Page<OrderResponse>>> list(
-            @PageableDefault(
-                    size = 10,
-                    sort = "id",
-                    direction = Sort.Direction.DESC
-            ) Pageable pageable
+            @PageableDefault(size = 10, sort = "id", direction = Sort.Direction.DESC) Pageable pageable
     ) {
         return responseSucceed(orderService.list(new Metadata(), pageable));
     }

@@ -1,0 +1,5 @@
+ALTER TABLE orders
+    ADD COLUMN currency VARCHAR(3) NOT NULL DEFAULT 'KHR' AFTER total_amount;
+
+ALTER TABLE payments
+    ADD COLUMN currency VARCHAR(3) NOT NULL DEFAULT 'KHR' AFTER amount;

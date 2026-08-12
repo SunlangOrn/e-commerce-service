@@ -19,5 +19,7 @@ public class OrderItemResponse {
     private String productImage;
     private Integer quantity;
     private BigDecimal price;
-    private BigDecimal subtotal;
+    private BigDecimal subtotal ;
+    private String currency;
+
 }

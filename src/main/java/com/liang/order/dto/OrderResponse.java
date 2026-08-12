@@ -1,5 +1,7 @@
 package com.liang.order.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.liang.payment.dto.AbaPayWayResponse;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -24,4 +26,7 @@ public class OrderResponse {
     private Integer totalItems;
     private List<OrderItemResponse> items;
     private Instant createdAt;
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private AbaPayWayResponse abaPayWayResponse;
 }

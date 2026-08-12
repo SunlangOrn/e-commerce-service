@@ -19,7 +19,8 @@ public class OrderRequest {
     private Long addressId;
 
     @NotNull(message = "Payment method is required")
-    private PaymentMethod paymentMethod;
+    @Pattern(regexp = "^(?i)(ABA_PAYWAY_KHQR|CASH_ON_DELIVERY)$", message = "Payment method must be ABA_PAYWAY_KHQR or CASH_ON_DELIVERY")
+    private String paymentMethod;
 
     private String note;
 }
