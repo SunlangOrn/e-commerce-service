@@ -13,6 +13,7 @@ spring:
       ddl-auto: validate
     open-in-view: false
   flyway:
+    clean-disabled: false
     enabled: true
     locations: classpath:db/migration
     clean-on-validation-error: true
@@ -22,11 +23,15 @@ security:
     secret: ${SECURITY_JWT_SECRET:change-this-secret-to-a-long-random-production-value-32-bytes}
     access-token-minutes: ${SECURITY_JWT_ACCESS_TOKEN_MINUTES:15}
     refresh-token-days: ${SECURITY_JWT_REFRESH_TOKEN_DAYS:7}
+
 payment:
   aba-payway:
-    api-url: ${ABA_PAYWAY_API_URL:https://checkout-sandbox.payway.com.kh/api/payment-gateway/v1/payments/generate-qr}
-    merchant-id: ${ABA_PAYWAY_MERCHANT_ID:keng.dara.online}
-    api-key: ${ABA_PAYWAY_API_KEY:your_sandbox_api_key_here}
+    api-url: ${ABA_PAYWAY_API_URL:https://checkout-sandbox.payway.com.kh/api/payment-gateway/v1/payments/purchase}
+    check-transaction-url: ${ABA_PAYWAY_CHECK_TRANSACTION_URL:https://checkout-sandbox.payway.com.kh/api/payment-gateway/v1/payments/check-transaction}
+    merchant-id: ${ABA_PAYWAY_MERCHANT_ID:ec477493}
+    api-key: ${ABA_PAYWAY_API_KEY:1b082277d80d87fd3c079bae3ba10fd1e01829e1}
     callback-url: ${ABA_PAYWAY_CALLBACK_URL:https://api.yourdomain.com/api/v1/payments/webhook/aba-callback}
+    currency: ${ABA_PAYWAY_CURRENCY:KHR}
+    lifetime-minutes: ${ABA_PAYWAY_LIFETIME_MINUTES:15}
 
   mock-mode: ${PAYMENT_MOCK_MODE:true}
