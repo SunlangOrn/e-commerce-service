@@ -37,6 +37,10 @@ public class Payment {
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal amount;
 
+    @Column(name = "currency")
+    private String currency = "KHR";
+
+
     @Column(name = "transaction_reference")
     private String transactionReference;
 
