@@ -100,6 +100,21 @@ public class AuthServiceImpl implements AuthService {
     return authMapper.toResponse(user);
   }
 
+  @Override
+  @Transactional
+  @MetadataHandler
+  public UserResponse updateProfile(Metadata metadata, UserProfileUpdateRequest request) {
+    User user = findCurrentUser(metadata);
+    user.setName(request.getName());
+    user.setPhone(request.getPhone());
+    return authMapper.toResponse(userRepository.save(user));
+  }
+
+  private User findCurrentUser(Metadata metadata) {
+    return userRepository.findById(metadata.getUserId())
+        .orElseThrow(() -> new NotFoundException("User not found"));
+  }
+
   private TokenResponse issueTokens(User user) {
     RefreshToken refreshToken = new RefreshToken();
     refreshToken.setUser(user);

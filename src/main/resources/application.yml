@@ -33,3 +33,6 @@ payment:
     callback-url: ${ABA_PAYWAY_CALLBACK_URL:}
     currency: ${ABA_PAYWAY_CURRENCY:KHR}
     lifetime-minutes: ${ABA_PAYWAY_LIFETIME_MINUTES:15}
+
+file-upload:
+  local-dir: ${FILE_UPLOAD_LOCAL_DIR:uploads}

@@ -12,4 +12,6 @@ public interface AuthService {
   void logout(String refreshTokenValue);
 
   UserResponse me(Metadata metadata);
+
+  UserResponse updateProfile(Metadata metadata, UserProfileUpdateRequest request);
 }

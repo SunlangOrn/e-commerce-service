@@ -1,6 +1,6 @@
 package com.liang.shared.auth;
 
-import com.liang.shared.security.Role;
+import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -8,11 +8,9 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class UserResponse {
-  private Long id;
+public class UserProfileUpdateRequest {
+  @NotBlank
   private String name;
-  private String email;
+
   private String phone;
-  private String profileImageUrl;
-  private Role role;
 }

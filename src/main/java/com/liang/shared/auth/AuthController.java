@@ -6,6 +6,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -22,6 +23,12 @@ public class AuthController {
     @PreAuthorize("isAuthenticated()")
     public ApiResponse<UserResponse> me() {
         return ApiResponse.ok("Current user", authService.me(new Metadata()));
+    }
+
+    @PutMapping("/profile")
+    @PreAuthorize("isAuthenticated()")
+    public ApiResponse<UserResponse> updateProfile(@Valid @RequestBody UserProfileUpdateRequest request) {
+        return ApiResponse.ok("Profile updated", authService.updateProfile(new Metadata(), request));
     }
 
     @PostMapping("/signup")

@@ -1,122 +1,249 @@
-﻿<!doctype html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ABA PayWay KHQR Test</title>
-  <style>
-    body { margin: 0; font-family: Arial, sans-serif; background: #f5f7fb; color: #17202a; }
-    main { max-width: 760px; margin: 32px auto; padding: 0 16px; }
-    .panel { background: white; border: 1px solid #dde3ee; border-radius: 8px; padding: 18px; margin-bottom: 14px; }
-    .row { display: grid; grid-template-columns: 160px 1fr; gap: 10px; align-items: center; margin: 10px 0; }
-    input, select, textarea { width: 100%; box-sizing: border-box; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; }
-    button { padding: 10px 14px; border: 0; border-radius: 6px; background: #0052cc; color: white; cursor: pointer; }
-    button.secondary { background: #334155; }
-    button:disabled { opacity: .55; cursor: not-allowed; }
-    .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
-    #qrImage { width: 280px; max-width: 100%; border: 1px solid #e2e8f0; border-radius: 8px; display: none; }
-    pre { white-space: pre-wrap; word-break: break-word; background: #0f172a; color: #dbeafe; padding: 12px; border-radius: 8px; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Store Checkout & ABA Payment</title>
+    <style>
+        :root {
+            --primary: #0052cc;
+            --bg: #f4f6f9;
+            --card-bg: #ffffff;
+            --border: #e2e8f0;
+            --text: #1e293b;
+        }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; }
+        .container { max-width: 800px; margin: 0 auto; display: grid; gap: 20px; }
+        .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        h2, h3 { margin-top: 0; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 5px; }
+        input, select, textarea { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box; }
+        button { background: var(--primary); color: white; border: none; padding: 12px 20px; border-radius: 6px; cursor: pointer; font-weight: 600; width: 100%; }
+        button:hover { opacity: 0.9; }
+        button:disabled { background: #94a3b8; cursor: not-allowed; }
+
+        /* Cart Table */
+        .cart-table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+        .cart-table th, .cart-table td { padding: 10px; border-bottom: 1px solid var(--border); text-align: left; }
+        .total-row { font-weight: bold; font-size: 1.1em; }
+
+        /* Payment Section */
+        .qr-container { text-align: center; display: none; margin-top: 20px; }
+        .qr-container img { width: 240px; border: 1px solid var(--border); border-radius: 12px; padding: 10px; }
+        .deep-link-btn { background: #e11d48; margin-top: 10px; text-decoration: none; display: inline-block; text-align: center; color: white; padding: 12px; border-radius: 6px; font-weight: bold; width: calc(100% - 24px); }
+        .status-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-weight: bold; font-size: 12px; }
+        .status-PENDING { background: #fef3c7; color: #b45309; }
+        .status-SUCCESS { background: #dcfce7; color: #15803d; }
+    </style>
 </head>
 <body>
-<main>
-  <section class="panel">
-    <h2>ABA PayWay KHQR Local Test</h2>
-    <div class="row"><label>Base URL</label><input id="baseUrl" value="http://localhost:16800"></div>
-    <div class="row"><label>Bearer Token</label><textarea id="token" rows="3" placeholder="Paste customer access token"></textarea></div>
-    <div class="row"><label>Address ID</label><input id="addressId" value="1"></div>
-    <div class="row">
-      <label>Payment</label>
-      <select id="paymentMethod">
-        <option value="ABA_PAYWAY_KHQR">ABA PayWay KHQR</option>
-        <option value="CASH_ON_DELIVERY">Cash on delivery</option>
-      </select>
-    </div>
-    <div class="actions">
-      <button onclick="checkout()">1. Checkout</button>
-      <button class="secondary" onclick="checkStatus()">2. Check ABA Status</button>
-    </div>
-  </section>
 
-  <section class="panel">
-    <h3>QR</h3>
-    <p id="summary">No order yet.</p>
-    <img id="qrImage" alt="ABA KHQR">
-    <div class="actions">
-      <button id="deepLinkBtn" onclick="openDeepLink()" disabled>Open ABA Deep Link</button>
-    </div>
-  </section>
+<div class="container">
 
-  <section class="panel">
-    <h3>Response</h3>
-    <pre id="output">{}</pre>
-  </section>
-</main>
+    <!-- 1. Authentication Configuration -->
+    <section class="card">
+        <h2>1. API Setup</h2>
+        <div class="form-group">
+            <label>Backend URL</label>
+            <input type="text" id="baseUrl" value="http://localhost:16800">
+        </div>
+        <div class="form-group">
+            <label>JWT Bearer Token</label>
+            <textarea id="jwtToken" rows="2" placeholder="Paste your JWT user token here..."></textarea>
+        </div>
+        <button onclick="fetchCartFromDatabase()">Load Cart from Database</button>
+    </section>
+
+    <!-- 2. Cart View (Fetched from DB) -->
+    <section class="card">
+        <h2>2. Your Cart</h2>
+        <table class="cart-table" id="cartTable">
+            <thead>
+            <tr>
+                <th>Product</th>
+                <th>Qty</th>
+                <th>Price</th>
+                <th>Subtotal</th>
+            </tr>
+            </thead>
+            <tbody id="cartItems">
+            <tr><td colspan="4" style="text-align: center;">Click "Load Cart" above to fetch from database.</td></tr>
+            </tbody>
+        </table>
+    </section>
+
+    <!-- 3. Checkout Form -->
+    <section class="card">
+        <h2>3. Shipping & Checkout</h2>
+        <div class="form-group">
+            <label>Address ID</label>
+            <input type="number" id="addressId" value="1">
+        </div>
+        <div class="form-group">
+            <label>Payment Method</label>
+            <select id="paymentMethod">
+                <option value="ABA_PAYWAY_KHQR">ABA PayWay KHQR</option>
+                <option value="CASH_ON_DELIVERY">Cash On Delivery</option>
+            </select>
+        </div>
+        <button id="checkoutBtn" onclick="placeOrder()" disabled>Place Order & Generate KHQR</button>
+    </section>
+
+    <!-- 4. KHQR Payment Display & Status Check -->
+    <section class="card qr-container" id="paymentSection">
+        <h2>4. Scan to Pay</h2>
+        <p>Order ID: <b id="displayOrderId">-</b> | Status: <span id="paymentStatus" class="status-badge status-PENDING">PENDING</span></p>
+
+        <img id="qrImage" src="" alt="ABA KHQR Code">
+
+        <div style="margin-top: 15px;">
+            <a id="deepLinkAnchor" href="#" target="_blank" class="deep-link-btn" style="display:none;">Open in ABA Mobile App</a>
+        </div>
+
+        <div style="margin-top: 15px;">
+            <button style="background: #334155;" onclick="verifyPaymentStatus()">Check Payment Status</button>
+        </div>
+    </section>
+
+</div>
 
 <script>
-let currentOrderId = null;
-let currentDeepLink = null;
+    let activeOrderId = null;
 
-function headers() {
-  return {
-    'Content-Type': 'application/json',
-    'Authorization': 'Bearer ' + document.getElementById('token').value.trim()
-  };
-}
+    function getHeaders() {
+        const token = document.getElementById('jwtToken').value.trim();
+        return {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + token
+        };
+    }
 
-function show(data) {
-  document.getElementById('output').textContent = JSON.stringify(data, null, 2);
-}
+    // Step 1: Fetch Cart from Database (calls UserCartController GET /api/v1/carts/mycart)
+    async function fetchCartFromDatabase() {
+        const baseUrl = document.getElementById('baseUrl').value.trim();
 
-async function checkout() {
-  const baseUrl = document.getElementById('baseUrl').value.trim();
-  const body = {
-    addressId: Number(document.getElementById('addressId').value),
-    paymentMethod: document.getElementById('paymentMethod').value,
-    note: 'Local ABA PayWay test'
-  };
+        try {
+            const response = await fetch(`${baseUrl}/api/v1/carts/mycart`, {
+                method: 'GET',
+                headers: getHeaders()
+            });
 
-  const res = await fetch(baseUrl + '/api/v1/orders/checkout', {
-    method: 'POST',
-    headers: headers(),
-    body: JSON.stringify(body)
-  });
-  const json = await res.json();
-  show(json);
-  if (!res.ok) return;
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.message || 'Failed to fetch cart');
 
-  const order = json.data;
-  currentOrderId = order.id;
-  document.getElementById('summary').textContent = 'Order #' + currentOrderId + ' - ' + order.paymentMethod;
+            renderCart(result.data);
+            document.getElementById('checkoutBtn').disabled = false;
+        } catch (err) {
+            alert('Error fetching cart: ' + err.message);
+        }
+    }
 
-  const aba = order.abaPayWayResponse;
-  if (aba && aba.qrImage) {
-    const img = document.getElementById('qrImage');
-    img.src = aba.qrImage.startsWith('data:') ? aba.qrImage : 'data:image/png;base64,' + aba.qrImage;
-    img.style.display = 'block';
-  }
-  if (aba && aba.abaPayDeeplink) {
-    currentDeepLink = aba.abaPayDeeplink;
-    document.getElementById('deepLinkBtn').disabled = false;
-  }
-}
+    function renderCart(cartData) {
+        const tbody = document.getElementById('cartItems');
+        tbody.innerHTML = '';
 
-async function checkStatus() {
-  if (!currentOrderId) {
-    alert('Checkout first');
-    return;
-  }
-  const baseUrl = document.getElementById('baseUrl').value.trim();
-  const res = await fetch(baseUrl + '/api/v1/payments/orders/' + currentOrderId + '/aba-khqr/status', {
-    method: 'GET',
-    headers: headers()
-  });
-  show(await res.json());
-}
+        if (!cartData.items || cartData.items.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Your cart is empty.</td></tr>';
+            return;
+        }
 
-function openDeepLink() {
-  if (currentDeepLink) window.location.href = currentDeepLink;
-}
+        cartData.items.forEach(item => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+        <td>${item.productName || 'Product #' + item.productId}</td>
+        <td>${item.quantity}</td>
+        <td>$${item.price}</td>
+        <td>$${(item.quantity * item.price).toFixed(2)}</td>
+      `;
+            tbody.appendChild(tr);
+        });
+
+        const totalTr = document.createElement('tr');
+        totalTr.className = 'total-row';
+        totalTr.innerHTML = `
+      <td colspan="3" style="text-align:right;">Total:</td>
+      <td>$${cartData.totalAmount ? cartData.totalAmount.toFixed(2) : '0.00'}</td>
+    `;
+        tbody.appendChild(totalTr);
+    }
+
+    // Step 2: Submit Checkout (calls UserOrderController POST /api/v1/orders/checkout)
+    async function placeOrder() {
+        const baseUrl = document.getElementById('baseUrl').value.trim();
+        const payload = {
+            addressId: Number(document.getElementById('addressId').value),
+            paymentMethod: document.getElementById('paymentMethod').value
+        };
+
+        try {
+            const response = await fetch(`${baseUrl}/api/v1/orders/checkout`, {
+                method: 'POST',
+                headers: getHeaders(),
+                body: JSON.stringify(payload)
+            });
+
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.message || 'Checkout failed');
+
+            const order = result.data;
+            activeOrderId = order.id;
+
+            document.getElementById('displayOrderId').textContent = activeOrderId;
+            document.getElementById('paymentSection').style.display = 'block';
+
+            // Render KHQR Data if payment method is ABA
+            if (order.abaPayWayResponse) {
+                renderAbaPayment(order.abaPayWayResponse);
+            }
+        } catch (err) {
+            alert('Checkout error: ' + err.message);
+        }
+    }
+
+    // Step 3: Render KHQR & ABA Mobile App Deep Link
+    function renderAbaPayment(abaData) {
+        if (abaData.qrImage) {
+            const qrImg = document.getElementById('qrImage');
+            qrImg.src = abaData.qrImage.startsWith('data:') ? abaData.qrImage : `data:image/png;base64,${abaData.qrImage}`;
+        }
+
+        if (abaData.abaPayDeeplink) {
+            const deepLinkAnchor = document.getElementById('deepLinkAnchor');
+            deepLinkAnchor.href = abaData.abaPayDeeplink;
+            deepLinkAnchor.style.display = 'inline-block';
+        }
+    }
+
+    // Step 4: Verify Payment Status (calls UsesPaymentController GET /api/v1/payments/orders/{orderId}/aba-khqr/status)
+    async function verifyPaymentStatus() {
+        if (!activeOrderId) return;
+
+        const baseUrl = document.getElementById('baseUrl').value.trim();
+        try {
+            const response = await fetch(`${baseUrl}/api/v1/payments/orders/${activeOrderId}/aba-khqr/status`, {
+                method: 'GET',
+                headers: getHeaders()
+            });
+
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.message || 'Status check failed');
+
+            const abaStatus = result.data;
+            const statusBadge = document.getElementById('paymentStatus');
+
+            if (abaStatus.statusCode === 0) {
+                statusBadge.textContent = 'SUCCESS';
+                statusBadge.className = 'status-badge status-SUCCESS';
+                alert('Payment successful!');
+            } else {
+                alert(`Status response: ${abaStatus.statusMessage || 'Payment pending'}`);
+            }
+        } catch (err) {
+            alert('Verification error: ' + err.message);
+        }
+    }
 </script>
+
 </body>
 </html>

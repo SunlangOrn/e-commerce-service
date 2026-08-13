@@ -29,11 +29,13 @@ public interface OrderMapper {
     @Mapping(target = "orderStatus", source = "orderStatus", qualifiedByName = "orderStatusToString")
     @Mapping(target = "paymentStatus", source = "paymentStatus", qualifiedByName = "paymentStatusToString")
     @Mapping(target = "paymentMethod", expression = "java(mapPaymentMethod(order))")
+    @Mapping(target = "note", ignore = true)
     OrderResponseDetail mapDetail(Order order);
 
     @Mapping(target = "productId", source = "product.id")
     @Mapping(target = "productName", source = "product.name")
     @Mapping(target = "productImage", source = "product.imageUrl")
+    @Mapping(target = "currency", ignore = true)
     OrderItemResponse fromOrderItem(OrderItem orderItem);
 
     @Named("orderStatusToString")
