@@ -162,8 +162,10 @@ public class OrderServiceImpl implements OrderService {
         savedOrder.setPayment(payment);
         savedOrder = orderRepository.save(savedOrder);
 
-        cart.getItems().clear();
-        cartRepository.save(cart);
+        if (payment.getPaymentMethod() == PaymentMethod.CASH_ON_DELIVERY) {
+            cart.getItems().clear();
+            cartRepository.save(cart);
+        }
 
         OrderResponse response = orderMapper.fromOrder(savedOrder);
 

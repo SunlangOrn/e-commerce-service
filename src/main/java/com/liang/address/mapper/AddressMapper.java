@@ -18,18 +18,11 @@ public interface AddressMapper {
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "user", ignore = true)
-    @Mapping(target = "deletedAt", ignore = true)
-    @Mapping(target = "latitude", ignore = true)
-    @Mapping(target = "longitude", ignore = true)
-    @Mapping(target = "googlePlaceId", ignore = true)
+    @Mapping(target = "deletedAt", ignore = true)   
     Address fromAddressRequest(AddressRequest request);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "user", ignore = true)
     @Mapping(target = "deletedAt", ignore = true)
-    @Mapping(target = "latitude", ignore = true)
-    @Mapping(target = "longitude", ignore = true)
-    @Mapping(target = "googlePlaceId", ignore = true)
-    void updateAddressFromRequest(AddressRequest request,  @MappingTarget Address address);
-
+    void updateAddressFromRequest(AddressRequest request, @MappingTarget Address address);
 }

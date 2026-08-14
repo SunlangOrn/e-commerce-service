@@ -1,6 +1,7 @@
 package com.liang.payment.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.liang.cart.repository.CartRepository;
 import com.liang.order.entity.Order;
 import com.liang.order.entity.OrderItem;
 import com.liang.payment.AbaPayWayProperties;
@@ -35,6 +36,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final AbaPayWayClient abaPayWayClient;
     private final AbaPayWayProperties properties;
     private final ObjectMapper objectMapper;
+    private final CartRepository cartRepository;
 
     @Override
     @Transactional
@@ -94,6 +96,7 @@ public class PaymentServiceImpl implements PaymentService {
         if (paid) {
             payment.markAsPaid(payment.getTransactionReference());
             paymentRepository.save(payment);
+            clearCart(payment.getOrder().getUser().getId());
         }
 
         return AbaPayWayResponse.builder()
@@ -101,8 +104,10 @@ public class PaymentServiceImpl implements PaymentService {
                 .tranId(payment.getTransactionReference())
                 .amount(payment.getAmount())
                 .currency(payment.getCurrency())
-                .statusCode(response != null && response.status() != null ? response.status().code() : null)
-                .statusMessage(response != null && response.status() != null ? response.status().message() : null)
+                .statusCode(response != null && response.data() != null && response.data().paymentStatusCode() != null
+                        ? String.valueOf(response.data().paymentStatusCode())
+                        : response != null && response.status() != null ? String.valueOf(response.status()) : null)
+                .statusMessage(response != null && response.data() != null ? response.data().paymentStatus() : null)
                 .build();
     }
 
@@ -155,6 +160,13 @@ public class PaymentServiceImpl implements PaymentService {
 
     private String buildTranId(Long orderId) {
         return "ORD" + orderId + System.currentTimeMillis() % 1_000_000L;
+    }
+
+    private void clearCart(Long userId) {
+        cartRepository.findByUserId(userId).ifPresent(cart -> {
+            cart.getItems().clear();
+            cartRepository.save(cart);
+        });
     }
 
     private String encodeOrderItems(Order order) {

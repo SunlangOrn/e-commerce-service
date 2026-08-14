@@ -15,6 +15,6 @@ public class CategoryRequest {
   @NotBlank
   @Size(max = 100)
   private String name;
-  @Pattern(regexp = "^(ACTIIVE|INACTIVE)$")
+  @Pattern(regexp = "^(ACTIVE|INACTIVE)$")
   private String status;
 }

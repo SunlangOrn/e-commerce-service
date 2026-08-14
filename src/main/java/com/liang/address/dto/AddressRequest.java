@@ -30,6 +30,12 @@ public class AddressRequest {
 
     private Boolean isDefault = false;
 
+    private Double latitude;
+
+    private Double longitude;
+
+    private String googlePlaceId;
+
     public Boolean getIsDefault() {
         return isDefault != null && isDefault;
     }

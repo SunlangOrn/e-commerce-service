@@ -19,4 +19,7 @@ public class AddressResponse {
     private String province;
     private String postalCode;
     private Boolean isDefault;
+    private Double latitude;
+    private Double longitude;
+    private String googlePlaceId;
 }

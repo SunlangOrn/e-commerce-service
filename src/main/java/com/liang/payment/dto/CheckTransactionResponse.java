@@ -3,7 +3,7 @@ package com.liang.payment.dto;
 
 public record CheckTransactionResponse(
 
-        Status status,
+        Integer status,
         Data data
 ) {
 }
