@@ -15,21 +15,41 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    networks:
+      - ecommerce-net
 
   app:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: ecommerce-app
     restart: unless-stopped
     depends_on:
       mysql:
         condition: service_healthy
     ports:
-      - "8080:8080"
+      - "8080:16800" # Maps host 8080 to container 16800
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/ecommerce_db
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/ecommerce_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: root
       SECURITY_JWT_SECRET: change-this-secret-to-a-long-random-production-value-32-bytes
+      FILE_UPLOAD_LOCAL_DIR: /app/uploads
+      ABA_PAYWAY_GENERATE_QR_URL: https://checkout-sandbox.payway.com.kh/api/payment-gateway/v1/payments/generate-qr
+      ABA_PAYWAY_CHECK_TRANSACTION_URL: https://checkout-sandbox.payway.com.kh/api/payment-gateway/v1/payments/check-transaction
+      ABA_PAYWAY_MERCHANT_ID: ec477493
+      ABA_PAYWAY_API_KEY: 1b082277d80d87fd3c079bae3ba10fd1e01829e1
+      ABA_PAYWAY_CURRENCY: KHR
+      ABA_PAYWAY_LIFETIME_MINUTES: 15
+    volumes:
+      - app_uploads:/app/uploads
+    networks:
+      - ecommerce-net
 
 volumes:
   mysql_data:
+  app_uploads:
+
+networks:
+  ecommerce-net:
+    driver: bridge
