@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.liang.cart.repository.CartRepository;
 import com.liang.order.entity.Order;
 import com.liang.order.entity.OrderItem;
+import com.liang.order.entity.OrderStatus;
 import com.liang.payment.AbaPayWayProperties;
 import com.liang.payment.aba.AbaPayWayClient;
 import com.liang.payment.dto.AbaPayWayResponse;
@@ -24,12 +25,14 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
+@Slf4j
 public class PaymentServiceImpl implements PaymentService {
 
     private final PaymentRepository paymentRepository;
@@ -82,19 +85,39 @@ public class PaymentServiceImpl implements PaymentService {
         Payment payment = paymentRepository.findByOrderIdAndOrderUserId(orderId, metadata.getUserId())
                 .orElseThrow(() -> new NotFoundException("Payment not found for order id: " + orderId));
 
+        // 1. Idempotency Check: Return immediately if already marked as SUCCESS in Database
+        if (payment.getPaymentStatus() == PaymentStatus.SUCCESS) {
+            return AbaPayWayResponse.builder()
+                    .orderId(orderId)
+                    .tranId(payment.getTransactionReference())
+                    .amount(payment.getAmount())
+                    .currency(payment.getCurrency())
+                    .statusCode("0")
+                    .statusMessage("APPROVED")
+                    .build();
+        }
+
         if (payment.getTransactionReference() == null || payment.getTransactionReference().isBlank()) {
             throw new IllegalStateException("ABA transaction has not been created yet");
         }
 
         var response = abaPayWayClient.checkTransaction(payment.getTransactionReference());
 
+        log.info("ABA check-transaction response for tranId={}: {}", payment.getTransactionReference(), response);
+
         boolean paid = response != null
-                && response.data() != null
-                && response.data().paymentStatusCode() != null
-                && response.data().paymentStatusCode() == 0;
+                && ((response.status() != null && response.status() == 0)
+                || "APPROVED".equalsIgnoreCase(response.paymentStatus()));
 
         if (paid) {
             payment.markAsPaid(payment.getTransactionReference());
+
+            Order order = payment.getOrder();
+            if (order != null) {
+                order.setPaymentStatus(PaymentStatus.SUCCESS);
+                order.setOrderStatus(OrderStatus.PROCESSING);
+            }
+
             paymentRepository.save(payment);
             clearCart(payment.getOrder().getUser().getId());
         }
@@ -104,20 +127,23 @@ public class PaymentServiceImpl implements PaymentService {
                 .tranId(payment.getTransactionReference())
                 .amount(payment.getAmount())
                 .currency(payment.getCurrency())
-                .statusCode(response != null && response.data() != null && response.data().paymentStatusCode() != null
-                        ? String.valueOf(response.data().paymentStatusCode())
-                        : response != null && response.status() != null ? String.valueOf(response.status()) : null)
-                .statusMessage(response != null && response.data() != null ? response.data().paymentStatus() : null)
+                .statusCode(paid ? "0" : (response != null && response.status() != null
+                        ? String.valueOf(response.status()) : "1"))
+                .statusMessage(paid ? "APPROVED" : (response != null ? response.paymentStatus() : "PENDING"))
                 .build();
     }
 
     private AbaPayWayResponse initiateAbaQr(Payment payment) {
         Order order = payment.getOrder();
-        String tranId = buildTranId(order.getId());
 
-        payment.setTransactionReference(tranId);
-        payment.setPaymentStatus(PaymentStatus.PENDING);
-        paymentRepository.save(payment);
+        // Reuse existing transactionReference if already generated (Prevents transaction ID mismatch)
+        String tranId = payment.getTransactionReference();
+        if (tranId == null || tranId.isBlank()) {
+            tranId = buildTranId(order.getId());
+            payment.setTransactionReference(tranId);
+            payment.setPaymentStatus(PaymentStatus.PENDING);
+            paymentRepository.save(payment);
+        }
 
         GenerateQrRequest request = new GenerateQrRequest(
                 abaPayWayClient.reqTimeNow(),

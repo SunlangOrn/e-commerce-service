@@ -1,5 +1,6 @@
 package com.liang.shared.security;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
@@ -9,14 +10,10 @@ import org.springframework.stereotype.Component;
  * so there's always a way to log in as an admin on a fresh database.
  */
 @Component
+@RequiredArgsConstructor
 public class AdminSeeder implements CommandLineRunner {
   private final UserRepository userRepository;
   private final PasswordEncoder passwordEncoder;
-
-  public AdminSeeder(UserRepository userRepository, PasswordEncoder passwordEncoder) {
-    this.userRepository = userRepository;
-    this.passwordEncoder = passwordEncoder;
-  }
 
   @Override
   public void run(String... args) {
@@ -25,7 +22,7 @@ public class AdminSeeder implements CommandLineRunner {
     }
     User admin = new User();
     admin.setName("Admin");
-    admin.setEmail("admin@shop.local");
+    admin.setEmail("admin@email.com");
     admin.setPassword(passwordEncoder.encode("admin123"));
     admin.setRole(Role.ADMIN);
     userRepository.save(admin);

@@ -28,7 +28,7 @@ services:
       mysql:
         condition: service_healthy
     ports:
-      - "8080:16800" # Maps host 8080 to container 16800
+      - "8080:16800"
     environment:
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/ecommerce_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
       SPRING_DATASOURCE_USERNAME: root

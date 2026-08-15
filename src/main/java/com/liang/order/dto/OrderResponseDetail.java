@@ -41,4 +41,5 @@ public class OrderResponseDetail {
 
     private Instant createdAt;
     private Instant updatedAt;
+    private Instant paidAt; // ADDED
 }

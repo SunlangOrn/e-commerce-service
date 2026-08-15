@@ -1,6 +1,5 @@
 server:
   port: 16800
-  address: 0.0.0.0
 
 spring:
   application:

@@ -17,9 +17,9 @@ INSERT INTO categories (name, status) VALUES
 
 -- 4. SEED PRODUCTS
 INSERT INTO products (category_id, name, description, price, stock_quantity, image_url, status) VALUES
-(1, 'iPhone 16 Pro', 'Apple A18 Pro Chip, 256GB Titanium', 100.00, 50, 'http://localhost:8080/uploads/iphone16.jpg', 'ACTIVE'),
-(1, 'Samsung Galaxy S24', 'Snapdragon 8 Gen 3, 256GB', 100.00, 30, 'http://localhost:8080/uploads/s24.jpg', 'ACTIVE'),
-(2, 'MacBook Pro 14"', 'Apple M3 Pro Chip, 18GB RAM', 100.00, 20, 'http://localhost:8080/uploads/macbook.jpg', 'ACTIVE');
+(3, 'iPhone 16 Pro', 'Apple A18 Pro Chip, 256GB Titanium', 100.00, 50, 'http://localhost:8080/uploads/iphone16.jpg', 'ACTIVE'),
+(3, 'Samsung Galaxy S24', 'Snapdragon 8 Gen 3, 256GB', 100.00, 30, 'http://localhost:8080/uploads/s24.jpg', 'ACTIVE'),
+(4, 'MacBook Pro 14"', 'Apple M3 Pro Chip, 18GB RAM', 100.00, 20, 'http://localhost:8080/uploads/macbook.jpg', 'ACTIVE');
 
 -- 5. SEED FILE UPLOADS
 INSERT INTO file_uploads (file_name, file_url, file_type, file_size, module, target_id) VALUES

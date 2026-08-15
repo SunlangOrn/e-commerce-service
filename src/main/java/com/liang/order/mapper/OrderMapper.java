@@ -7,6 +7,7 @@ import com.liang.order.entity.Order;
 import com.liang.order.entity.OrderItem;
 import com.liang.order.entity.OrderStatus;
 import com.liang.payment.entity.PaymentStatus;
+import java.time.Instant; // ADDED
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.Named;
@@ -19,6 +20,7 @@ public interface OrderMapper {
     @Mapping(target = "paymentStatus", source = "paymentStatus", qualifiedByName = "paymentStatusToString")
     @Mapping(target = "totalItems", expression = "java(order.getOrderItems() != null ? order.getOrderItems().size() : 0)")
     @Mapping(target = "paymentMethod", expression = "java(mapPaymentMethod(order))")
+    @Mapping(target = "paidAt", expression = "java(mapPaidAt(order))") // ADDED
     @Mapping(target = "abaPayWayResponse", ignore = true)
     OrderResponse fromOrder(Order order);
 
@@ -29,6 +31,7 @@ public interface OrderMapper {
     @Mapping(target = "orderStatus", source = "orderStatus", qualifiedByName = "orderStatusToString")
     @Mapping(target = "paymentStatus", source = "paymentStatus", qualifiedByName = "paymentStatusToString")
     @Mapping(target = "paymentMethod", expression = "java(mapPaymentMethod(order))")
+    @Mapping(target = "paidAt", expression = "java(mapPaidAt(order))") // ADDED
     @Mapping(target = "note", ignore = true)
     OrderResponseDetail mapDetail(Order order);
 
@@ -77,5 +80,13 @@ public interface OrderMapper {
             return null;
         }
         return order.getPayment().getPaymentMethod().name();
+    }
+
+    // ADDED
+    default Instant mapPaidAt(Order order) {
+        if (order == null || order.getPayment() == null) {
+            return null;
+        }
+        return order.getPayment().getPaidAt();
     }
 }

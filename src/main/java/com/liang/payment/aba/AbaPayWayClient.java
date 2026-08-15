@@ -1,5 +1,6 @@
 package com.liang.payment.aba;
 
+import com.fasterxml.jackson.databind.ObjectMapper; // ADDED
 import com.liang.payment.AbaPayWayProperties;
 import com.liang.payment.dto.CheckTransactionRequest;
 import com.liang.payment.dto.CheckTransactionResponse;
@@ -13,10 +14,12 @@ import java.util.Base64;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j; // ADDED
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
+@Slf4j // ADDED
 @Component
 @RequiredArgsConstructor
 public class AbaPayWayClient {
@@ -25,6 +28,7 @@ public class AbaPayWayClient {
 
     private final AbaPayWayProperties properties;
     private final RestClient.Builder restClientBuilder;
+    private final ObjectMapper objectMapper; // ADDED
 
     public String reqTimeNow() {
         return OffsetDateTime.now(ZoneOffset.UTC).format(REQ_TIME_FORMATTER);
@@ -45,7 +49,8 @@ public class AbaPayWayClient {
 
     public CheckTransactionResponse checkTransaction(String tranId) {
         String reqTime = reqTimeNow();
-        String hash = sign(reqTime + properties.merchantId() + tranId);
+        String hashBody = reqTime + properties.merchantId() + tranId;
+        String hash = sign(hashBody);
         CheckTransactionRequest request = new CheckTransactionRequest(
                 reqTime,
                 properties.merchantId(),
@@ -53,13 +58,26 @@ public class AbaPayWayClient {
                 hash
         );
 
-        return restClientBuilder.build()
+        // ADDED — log exactly what we're sending
+        log.info("ABA check-transaction REQUEST: reqTime={}, merchantId={}, tranId={}, hashBody='{}', hash={}",
+                reqTime, properties.merchantId(), tranId, hashBody, hash);
+
+        String rawResponse = restClientBuilder.build()
                 .post()
                 .uri(properties.checkTransactionUrl())
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(request)
                 .retrieve()
-                .body(CheckTransactionResponse.class);
+                .body(String.class); // ADDED — capture raw text first
+
+        log.info("ABA check-transaction RAW RESPONSE: {}", rawResponse); // ADDED
+
+        try {
+            return objectMapper.readValue(rawResponse, CheckTransactionResponse.class);
+        } catch (Exception e) {
+            log.error("Failed to parse ABA check-transaction response: {}", rawResponse, e);
+            throw new IllegalStateException("Could not parse ABA check-transaction response", e);
+        }
     }
 
     private String generateQrHashBody(GenerateQrRequest r) {

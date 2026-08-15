@@ -26,6 +26,7 @@ public class OrderResponse {
     private Integer totalItems;
     private List<OrderItemResponse> items;
     private Instant createdAt;
+    private Instant paidAt; // ADDED
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private AbaPayWayResponse abaPayWayResponse;
