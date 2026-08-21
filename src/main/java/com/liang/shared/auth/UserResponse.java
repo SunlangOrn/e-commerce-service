@@ -15,4 +15,5 @@ public class UserResponse {
   private String phone;
   private String profileImageUrl;
   private Role role;
+  private UserStatus status;
 }

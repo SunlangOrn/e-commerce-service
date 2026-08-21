@@ -11,6 +11,7 @@ public interface AuthMapper {
   @Mapping(target = "id", ignore = true)
   @Mapping(target = "password", ignore = true)
   @Mapping(target = "role", ignore = true)
+  @Mapping(target = "status", ignore = true)
   @Mapping(target = "createdAt", ignore = true)
   @Mapping(target = "updated_At", ignore = true)
   @Mapping(target = "deletedAt", ignore = true)
