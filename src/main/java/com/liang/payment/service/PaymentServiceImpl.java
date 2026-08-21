@@ -7,13 +7,11 @@ import com.liang.order.entity.OrderItem;
 import com.liang.order.entity.OrderStatus;
 import com.liang.payment.AbaPayWayProperties;
 import com.liang.payment.aba.AbaPayWayClient;
-import com.liang.payment.dto.AbaPayWayResponse;
-import com.liang.payment.dto.GenerateQrRequest;
-import com.liang.payment.dto.GenerateQrResponse;
-import com.liang.payment.dto.PaymentInitiationResult;
+import com.liang.payment.dto.*;
 import com.liang.payment.entity.Payment;
 import com.liang.payment.entity.PaymentMethod;
 import com.liang.payment.entity.PaymentStatus;
+import com.liang.payment.mapper.PaymentMapper;
 import com.liang.payment.repository.PaymentRepository;
 import com.liang.shared.api.NotFoundException;
 import com.liang.shared.metadata.Metadata;
@@ -26,6 +24,8 @@ import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,6 +40,27 @@ public class PaymentServiceImpl implements PaymentService {
     private final AbaPayWayProperties properties;
     private final ObjectMapper objectMapper;
     private final CartRepository cartRepository;
+
+    @Override
+    public Page<PaymentResponse> adminList(Pageable pageable) {
+        return paymentRepository.findAll(pageable).map(PaymentMapper::toResponse);
+    }
+
+    @Override
+    public PaymentResponse adminView(Long id) {
+        Payment payment = paymentRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Payment not found with id: " + id));
+
+        return PaymentMapper.toResponse(payment);
+    }
+
+    @Override
+    public PaymentResponse adminViewByOrderId(Long orderId) {
+        Payment payment = paymentRepository.findByOrderId(orderId)
+                .orElseThrow(() -> new NotFoundException("Payment not found for order id: " + orderId));
+
+        return PaymentMapper.toResponse(payment);
+    }
 
     @Override
     @Transactional

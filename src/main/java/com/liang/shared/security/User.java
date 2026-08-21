@@ -1,5 +1,6 @@
 package com.liang.shared.security;
 
+import com.liang.shared.auth.UserStatus;
 import jakarta.persistence.*;
 
 import java.time.Instant;
@@ -30,6 +31,10 @@ public class User {
     private String password;
 
     private String phone;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, name = "status")
+    private UserStatus userStatus = UserStatus.ENABLE;
 
     @Column(name = "profile_image_url", length = 500)
     private String profileImageUrl;

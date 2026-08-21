@@ -1,5 +1,6 @@
 package com.liang.shared.security;
 
+import com.liang.shared.auth.UserStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -25,6 +26,7 @@ public class AdminSeeder implements CommandLineRunner {
     admin.setEmail("admin@email.com");
     admin.setPassword(passwordEncoder.encode("admin123"));
     admin.setRole(Role.ADMIN);
+    admin.setUserStatus(UserStatus.ENABLE);
     userRepository.save(admin);
   }
 }

@@ -35,4 +35,4 @@ payment:
     lifetime-minutes: ${ABA_PAYWAY_LIFETIME_MINUTES:15}
 
 file-upload:
-  local-dir: C:/Users/CC_computer/Documents/document/Springboot/FullStack-Ecommerce-Spring-Fullter/ecommerce-front/assets/images
+  local-dir: C:/Users/CC_computer/Documents/document/Springboot/FullStack-Ecommerce-Spring-Fullter/assets/images

@@ -56,6 +56,7 @@ public class AuthServiceImpl implements AuthService {
     User user = authMapper.from(request);
     user.setPassword(passwordEncoder.encode(request.getPassword()));
     user.setRole(Role.CUSTOMER);
+    user.setUserStatus(UserStatus.ENABLE);
     userRepository.save(user);
     return issueTokens(user);
   }
@@ -110,7 +111,21 @@ public class AuthServiceImpl implements AuthService {
     return authMapper.toResponse(userRepository.save(user));
   }
 
-  private User findCurrentUser(Metadata metadata) {
+  @Override
+  public void enable(Metadata metadata){
+      User user = findCurrentUser(metadata);
+      user.setUserStatus(UserStatus.ENABLE);
+      userRepository.save(user);
+  }
+
+    @Override
+    public void disable(Metadata metadata) {
+        User user = findCurrentUser(metadata);
+        user.setUserStatus(UserStatus.DISABLE);
+        userRepository.save(user);
+    }
+
+    private User findCurrentUser(Metadata metadata) {
     return userRepository.findById(metadata.getUserId())
         .orElseThrow(() -> new NotFoundException("User not found"));
   }

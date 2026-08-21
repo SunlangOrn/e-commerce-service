@@ -14,4 +14,8 @@ public interface AuthService {
   UserResponse me(Metadata metadata);
 
   UserResponse updateProfile(Metadata metadata, UserProfileUpdateRequest request);
+
+  void enable(Metadata metadata);
+
+  void disable(Metadata metadata    );
 }
